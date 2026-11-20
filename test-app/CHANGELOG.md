@@ -44,6 +44,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Runs on Valtimo 13.55.1** (was 13.54.0). Its swagger-ui (5.34.1) no longer carries the
+  vulnerable DOMPurify. Where OpenSearch is enabled, 13.55 needs OpenSearch 2.7 or later and a
+  one-time "Rebuild / migrate index" on Admin > OpenSearch.
+
 - **The test app is built with Kotlin 2.4 and runs on the standard library it is compiled
   against.** Spring Boot's dependency management pinned every Kotlin artifact to Boot's own 1.9.25,
   so the application ran on the 1.9.25 standard library whatever the Kotlin plugin said. From

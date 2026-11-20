@@ -62,14 +62,14 @@ importers:
         specifier: 19.2.25
         version: 19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@19.2.25(@angular/animations@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2)
       '@valtimo/components':
-        specifier: 13.54.0
-        version: 13.54.0(03a40c4340cfb08b0d641fb3d4f3ed55)
+        specifier: 13.55.1
+        version: 13.55.1(03a40c4340cfb08b0d641fb3d4f3ed55)
       '@valtimo/plugin':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/shared':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       oxfmt:
         specifier: ^0.78.0
         version: 0.78.0(svelte@5.56.7(@typescript-eslint/types@8.57.2))
@@ -144,20 +144,20 @@ importers:
         specifier: ^22.15.3
         version: 22.20.5
       '@valtimo/components':
-        specifier: 13.54.0
-        version: 13.54.0(03a40c4340cfb08b0d641fb3d4f3ed55)
+        specifier: 13.55.1
+        version: 13.55.1(03a40c4340cfb08b0d641fb3d4f3ed55)
       '@valtimo/plugin':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/process-link':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/security':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/shared':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       carbon-components-angular:
         specifier: 5.57.6
         version: 5.57.6(@carbon/styles@1.80.0(sass@1.98.0))
@@ -223,7 +223,7 @@ importers:
         version: 1.23.6(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@epistola.app/valtimo-plugin':
         specifier: workspace:*
-        version: file:frontend/plugin(63a279beda423dd9cbad8805244e383e)
+        version: file:frontend/plugin(abded992775dffa32d8a6ee35ed84057)
       '@formio/angular':
         specifier: 7.0.0
         version: 7.0.0(c150ca8a43035968948abde96c21d2f9)
@@ -240,119 +240,119 @@ importers:
         specifier: 16.0.1
         version: 16.0.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/access-control':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/access-control-management':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/account':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/analyse':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/bootstrap':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/building-block-management':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@typescript-eslint/types@8.57.2)
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@typescript-eslint/types@8.57.2)
       '@valtimo/case':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@valtimo/case-management':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/case-migration':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/choice-field':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/components':
-        specifier: 13.54.0
-        version: 13.54.0(03a40c4340cfb08b0d641fb3d4f3ed55)
+        specifier: 13.55.1
+        version: 13.55.1(03a40c4340cfb08b0d641fb3d4f3ed55)
       '@valtimo/dashboard':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/dashboard-management':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/decision':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/document':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/form':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/form-flow-management':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/form-management':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/keycloak':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/router@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@19.2.25(@angular/animations@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/router@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@19.2.25(@angular/animations@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2))
       '@valtimo/layout':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/logging':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/migration':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/milestone':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/forms@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@19.2.25(@angular/animations@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/forms@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@19.2.25(@angular/animations@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2))
       '@valtimo/object':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/object-management':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/plugin':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/plugin-management':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/process':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/process-link':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/process-management':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(diagram-js@15.3.0)(zeebe-bpmn-moddle@1.12.0)
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(diagram-js@15.3.0)(zeebe-bpmn-moddle@1.12.0)
       '@valtimo/resource':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/security':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/shared':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/sse':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/swagger':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
       '@valtimo/task':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/task-management':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/teams':
-        specifier: 13.54.0
-        version: 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.55.1
+        version: 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@webcomponents/custom-elements':
         specifier: 1.6.0
         version: 1.6.0
@@ -3618,110 +3618,233 @@ packages:
     peerDependencies:
       acorn: ^8.9.0
 
+  '@swagger-api/apidom-ast@1.14.0':
+    resolution: {integrity: sha512-yzKA1z63/YL/bT50axexISPwQpQC7Vtl+OBVGMktz9lQgKpQTudKEp/k4c3D61jOS5YWKtu2UzcB65l/AY+0mQ==}
+
   '@swagger-api/apidom-ast@1.8.0':
     resolution: {integrity: sha512-cpYLFeXusH9kN1ekaTbb9rG8HYFYtqZeiAAB4WaA1YmMkzf5bHSKqsrMFVKwupwdKTxxkmmlsLqGjy1HOIxFlQ==}
+
+  '@swagger-api/apidom-core@1.14.0':
+    resolution: {integrity: sha512-4BCnyq7P7ZJZawZpIt0tw/OGgiTYsfZ5nCq+9az0hHQWyQ/C7nbYzjeCoY+gMGlO33S/CIlzkJL7nL7xv4rijA==}
 
   '@swagger-api/apidom-core@1.8.0':
     resolution: {integrity: sha512-iJavkTVvf5iRMYG0W5XPM33A6BypWvEVrnXfl0hiUL7AEV1ZcDLjyxvmS4CqYdaB4oiSVpClMlJZZqUI1yt0rg==}
 
+  '@swagger-api/apidom-error@1.14.0':
+    resolution: {integrity: sha512-LiuN9xv+qM1w+zrYXTg94uZSKtzMQp64fiKxU8CZW/psfyj+/5RUt3bn+tHzoVuaN8XPLyvCafCchZ8MKTcvEA==}
+
   '@swagger-api/apidom-error@1.8.0':
     resolution: {integrity: sha512-Bbqr15CpSbexdQYr4Z7sI6UGQw650nDrynQkGXu7NEWO/kGM43RexvkrIGHfOLlf4gA71qRO630KYe+/+b62/Q==}
+
+  '@swagger-api/apidom-json-pointer@1.14.0':
+    resolution: {integrity: sha512-lxBGROkikKtqe8WyXSczRSttwKp79jqNiJ2KK6OsuWxe+3ehic2dzvC+xKXgIiSkGjYRV3saSa2OcwvcqSWOuQ==}
 
   '@swagger-api/apidom-json-pointer@1.8.0':
     resolution: {integrity: sha512-r00Tl0MDdiKowH6xSzVAdwGnNIQ7uFPfxFJHcDnA/lZ8S1mUTHToaoq3ZiEtErdkM4Qvb6r2kUo7gjuX4cyZvA==}
 
+  '@swagger-api/apidom-ns-a2a-1@1.14.0':
+    resolution: {integrity: sha512-Dz/z444nTMr2n4cGHhf7fuBdX6dI+rsS65651NLmD52oFENRkklMgWcfwZqBWp8u87oLsCf8ZS0vqiaU6myLfQ==}
+
+  '@swagger-api/apidom-ns-api-design-systems@1.14.0':
+    resolution: {integrity: sha512-p9GfaYZvNGMVuSy89IGeeyod+RFfKma+znrv1N4Id/QLBe0VLisnmqf/wKNWCpK8FE0uZqxvuFRUMj2eOuGnfQ==}
+
   '@swagger-api/apidom-ns-api-design-systems@1.8.0':
     resolution: {integrity: sha512-3jFySxvBDnsPg7B4hPGqWmlRm2o6mOViyKWKXT2cHixjPP7ZxvCaj8bdSQhmOaZrdgMM+9JUXpY8yZz6UdNrig==}
+
+  '@swagger-api/apidom-ns-arazzo-1@1.14.0':
+    resolution: {integrity: sha512-UIjdwgBCkOJYXxjmCulnvRjocJW0uhg2OXUS7FzKMXf0O3EeK3ChUoyOYgfSsQ8x6oF7uWbpSy4geSezCikj1Q==}
 
   '@swagger-api/apidom-ns-arazzo-1@1.8.0':
     resolution: {integrity: sha512-CQ2+FbsZgcBcEY9PSfqvG1vRDSUjj+wfILGbhd9/EitF6E1hdur+ahUNPObW8qBHN/nOvo+cRtoGMTP1ZB8i3Q==}
 
+  '@swagger-api/apidom-ns-asyncapi-2@1.14.0':
+    resolution: {integrity: sha512-MTJZk9Dpg9maey3eHg7D4t1Hl8i0pK8PrqXhmMGNiyKGMLSVmZeIZMC89fJVUZFn6zEcYAGE9dq0oAR4V17n5Q==}
+
   '@swagger-api/apidom-ns-asyncapi-2@1.8.0':
     resolution: {integrity: sha512-COFbS2FoUOIUEz7+Sq9NHwsidBPZ0aqQu3/TXID2O+kx4MfZmnGrpuJliwYeB73gkI4o2JhT28fB1Jb+pmul7Q==}
+
+  '@swagger-api/apidom-ns-asyncapi-3@1.14.0':
+    resolution: {integrity: sha512-oxRxbEaZ019N2hYQh7TQT5JyyWFaenwx0nCE8wGUCYVeXAnH5BH8SCOxJgi51++N1Ro+mFtP6+D26GyFLl1asA==}
 
   '@swagger-api/apidom-ns-asyncapi-3@1.8.0':
     resolution: {integrity: sha512-kC6mxmh+x+qpyZvxAA2C0BURUtnCVpNRvcjrnzMEShA4mderW+e6uD6rtmr3DxbBt+BGIQE9eXtCOW1q+aPOUQ==}
 
+  '@swagger-api/apidom-ns-json-schema-2019-09@1.14.0':
+    resolution: {integrity: sha512-jHE49ethyReHw0krjIx+pi0gEESNCCjVxuEp1ZvdVun7a+KIBJwp9koHVxO+GPlXBeg/accV2WK0ASGiwXffQA==}
+
   '@swagger-api/apidom-ns-json-schema-2019-09@1.8.0':
     resolution: {integrity: sha512-ipyiN63PpMccMpC6K95yl0MZOjFGMlCGtphKE9j1W2Hj8Poxirdlo8NpYOioqC2uJlEwb+fm0Ue2ysFdFkG0Ng==}
+
+  '@swagger-api/apidom-ns-json-schema-2020-12@1.14.0':
+    resolution: {integrity: sha512-HGBVG+JlAQbHmLunjDlmNw80NUN6DVyy4p+VMs9JZH2oACSKaOxNmHhertk0Szg0xdNXVEJiVvOKkjeLI+iADw==}
 
   '@swagger-api/apidom-ns-json-schema-2020-12@1.8.0':
     resolution: {integrity: sha512-v1RdzxUcGv6RtXYLKd5qh8asPWzSrbDkEwHgV0JitzwQd8sd0Vu3ey8JaIuG3ZTsndS7qHOQG9Xdu+rqtjEXxQ==}
 
+  '@swagger-api/apidom-ns-json-schema-draft-4@1.14.0':
+    resolution: {integrity: sha512-Un0xLcfALPM9NWavUPL5LCU2kEYjhnkhqTxQolbXqE/BbQzBdiSFTlXys56L4tz6UyH8v1LjE2Af63UCY4kKmQ==}
+
   '@swagger-api/apidom-ns-json-schema-draft-4@1.8.0':
     resolution: {integrity: sha512-UOvfkK2Dl158IZ2wCYcE1z2YcPZDPKMe6U0OdwBoftM8sWd19GU6a6jyUw2AKSofCdmPWEIRvZNYHvDcue1cbA==}
+
+  '@swagger-api/apidom-ns-json-schema-draft-6@1.14.0':
+    resolution: {integrity: sha512-lVLknAwGZEyjWbFCQg8ZUVQetN8I5hGmcGb3bnURxglXpneFGsf6vFg1ptBRF4W6PO3okeOAyKvE93gZB4F5Jg==}
 
   '@swagger-api/apidom-ns-json-schema-draft-6@1.8.0':
     resolution: {integrity: sha512-RlO/P8VpQ55hhrP4MMf9wyiBWBbrEnEhN1MtTIyF/P04+WxRBPCOVmAFiCJ9DAI6ppJIU+PBn/5wF7mpUCmA6Q==}
 
+  '@swagger-api/apidom-ns-json-schema-draft-7@1.14.0':
+    resolution: {integrity: sha512-XECPBJyJRj6QKvNGwWumagSRIQhu0WGpYlnLNxyXPTFbDt52GBdz1k5qA4F+cJIBtOMKqZH+TSsMiRKjHs0PxA==}
+
   '@swagger-api/apidom-ns-json-schema-draft-7@1.8.0':
     resolution: {integrity: sha512-RDY2TxaJ/wCUBDq9ZqLM8E9Ub4kSyJ5USqjp5HsgRkYOkXKZzXKnEDwtTz2ZO4s+9ocjQMMEtWNvpCHYTR/JFA==}
+
+  '@swagger-api/apidom-ns-openapi-2@1.14.0':
+    resolution: {integrity: sha512-ithVOQNsgUbA4o4Gsyv5IXvXGk2EVFSzRb79L+fUNb2kBn2NThyG3IBLaHVkdLxzD5AtNiqw7canD1+osJLgZg==}
 
   '@swagger-api/apidom-ns-openapi-2@1.8.0':
     resolution: {integrity: sha512-9GZDWZc28RcpuinZjSnK7L6TVKtBYKb3n0SGqITKfNp2CRKcEwIeyenQjiES4/lwcT3VYIROByG89+6KHX6p2w==}
 
+  '@swagger-api/apidom-ns-openapi-3-0@1.14.0':
+    resolution: {integrity: sha512-sWd0ck8wG6dJZRhUEXENZWJwU4zdT8mPeGyNaaCwN0T7ShATg3RXL3eMJuRqP1liQmZuf+A5Ho/IxmS98ZgWYw==}
+
   '@swagger-api/apidom-ns-openapi-3-0@1.8.0':
     resolution: {integrity: sha512-c1OcjKo/WDd13b08WW1ENm2tArYJunO2SsRnqhg//Z6UOJl+5q4ykIWi96zx/yxh6+kPFVCylU5Mxl+eNW35ng==}
+
+  '@swagger-api/apidom-ns-openapi-3-1@1.14.0':
+    resolution: {integrity: sha512-HCTmFPzQumKTrcs+4eaTMfhWgkx6dJ30Zh/VOkZOtVgQDUzezKKUm1+NIdFZEIaQ0ZmRGvdXZ+RZnF6v1U6hUQ==}
 
   '@swagger-api/apidom-ns-openapi-3-1@1.8.0':
     resolution: {integrity: sha512-l19IeQG8I2i3510jNd7OO99f1hqV6zlVkHNKgLSsjufMjIP30p8iJ1tz6QPoVxC5S8ZRCijEUCo0rsyVpITV0g==}
 
+  '@swagger-api/apidom-ns-openapi-3-2@1.14.0':
+    resolution: {integrity: sha512-tFBqwD4t3ChezZ6oM7gNEbTFpNsb5xxg7ozhfgc34xdak1/MIQkRNLH/GgvpztG81pERIqrQLGcbWm5iH8wqFg==}
+
   '@swagger-api/apidom-ns-openapi-3-2@1.8.0':
     resolution: {integrity: sha512-RJqLKqXV1x9N358PXzD5tIS3fhGVP1axIZBXFfV3pI/1QFprUq0qjxU0yyW26BRsP81ZXHY/41WIwBPmeDLJXA==}
+
+  '@swagger-api/apidom-parser-adapter-a2a-json-1@1.14.0':
+    resolution: {integrity: sha512-161dG8D7BP7ejwNKLRweemGw4cpJjVMixXos/67PCnr2Hg+MV+vEhh0VtBJoSf2NMNnfhO9g1wKAnj2pDCYWNA==}
+
+  '@swagger-api/apidom-parser-adapter-a2a-yaml-1@1.14.0':
+    resolution: {integrity: sha512-osK6KbCLUS12fMtjIQ/GZ8SbVZVoe0t9Lhb9IO4WSQz75R2YUdU/iB8Jx93SciiHjCQ/1iRI+EBfUZkmyzbeIw==}
+
+  '@swagger-api/apidom-parser-adapter-api-design-systems-json@1.14.0':
+    resolution: {integrity: sha512-Ga4ibi3XL4QPVKInUID5mbsX6wfDZ0awHHtLPktxkEauZdh/O/VAnvL7s559wJcFltNaHAQkHq0c2WPVkwxjZw==}
 
   '@swagger-api/apidom-parser-adapter-api-design-systems-json@1.8.0':
     resolution: {integrity: sha512-gFvwDoMOLHsWGCQk+zuA9bBR76jNhNaUlhElnvAARllYosmwuYNh0AnLfXCs2+r8j6Oy0WxZs/cIsRmspiDtTQ==}
 
+  '@swagger-api/apidom-parser-adapter-api-design-systems-yaml@1.14.0':
+    resolution: {integrity: sha512-6FWu5PsI/0YJts0GCF3+0EcBHteoV1oVVaKhf9cT2ZehG3fXHtgmz3lviG+CtdolIQ5+k4NNPvWXmECzZo96fg==}
+
   '@swagger-api/apidom-parser-adapter-api-design-systems-yaml@1.8.0':
     resolution: {integrity: sha512-DgeQibnf0j9A22XsaMDl+JNrrP3TJYODh4+YNkKPds6m7rBYv89wloC7cNs2fFZphY87sfhF3B2Bckp3CeR7IQ==}
+
+  '@swagger-api/apidom-parser-adapter-arazzo-json-1@1.14.0':
+    resolution: {integrity: sha512-CBSyZX+g3A7x9WPzve97gRNibgVXobPgEYaRBMkfEun51rsygI33yMOpmEBi7xu3FV7h8SQiB268krhCjfKaYw==}
 
   '@swagger-api/apidom-parser-adapter-arazzo-json-1@1.8.0':
     resolution: {integrity: sha512-a10UIWrV3GTOqugX83qvWZR/UjwQJffrVQ6OdD27GkhwXk0+58As551Hu5NW1W/BIgHHKlhsAmgndgE/jlz4Jg==}
 
+  '@swagger-api/apidom-parser-adapter-arazzo-yaml-1@1.14.0':
+    resolution: {integrity: sha512-zDjsCgVDcFS/+YWZgSD3vJK4rzOZCg+HvcNEsCV9lO7FfN/jXykWFlFTkWDfSrSEoltRbWAzV5hd/etEvpjbjQ==}
+
   '@swagger-api/apidom-parser-adapter-arazzo-yaml-1@1.8.0':
     resolution: {integrity: sha512-eK7XRuGMxQKI3R13IWki1IRzoJ6kYTkOrg9bRGaw2JmsgHHFeXVBbYTABRDsYRLe0kG7LU4Kk8OaKSqmq/IuZw==}
+
+  '@swagger-api/apidom-parser-adapter-asyncapi-json-2@1.14.0':
+    resolution: {integrity: sha512-DwQpgYw8s9cLbxUtrP8psFzqoR52Bn1+r7a2khLxTebUgfUYLn8orffvq/xppx3lf2Rnvqgey7wPy0eI5WUoag==}
 
   '@swagger-api/apidom-parser-adapter-asyncapi-json-2@1.8.0':
     resolution: {integrity: sha512-YqcrODYnlsPBghJL6hlCMVhqdjHhCresL6SpO55eoYvFJGABtl+wgYjVN5Ddug9PAw/25c9vLpth4sYb0m9+oQ==}
 
+  '@swagger-api/apidom-parser-adapter-asyncapi-json-3@1.14.0':
+    resolution: {integrity: sha512-V4BA10W8x0z/ZRpcRGjVdjKAxLC9eByrGDJjMYRQrEBOKGnUSkIE/xg3N7adp+SHSFem76H4Ez8+e4op67RQsw==}
+
   '@swagger-api/apidom-parser-adapter-asyncapi-json-3@1.8.0':
     resolution: {integrity: sha512-3oKgsXR/UmFwSXDsmM6eNObLy93VJZethhzp3bCC/Br83w8V/tkBNIXcWZs0xx2crqYDnROr20jy4Qtq6SqoCw==}
+
+  '@swagger-api/apidom-parser-adapter-asyncapi-yaml-2@1.14.0':
+    resolution: {integrity: sha512-w5+0L5sZKbmjcx06Y1me6nK8v+q9n013hL19DzmU0EhVn9rWrqWg891irWwkOqmfJmCcuz8NVBIwqNMxDJy5Fg==}
 
   '@swagger-api/apidom-parser-adapter-asyncapi-yaml-2@1.8.0':
     resolution: {integrity: sha512-HvK2+6dlD2Q7SMHbgsFXGpDL5uiCxu4N8oOXVuy1OeapoQRxzB0LZae/rKrXj/YDITc1xQ9cbQyTsEM+Hfa2bA==}
 
+  '@swagger-api/apidom-parser-adapter-asyncapi-yaml-3@1.14.0':
+    resolution: {integrity: sha512-TQpWTTJNg0eSxv8xpTJGOwMlftuHY/YeVpBphA9Ssk22K8ImmB/pZQGhE5oUJ7M7mbgXvlJOtkbuBFDQ7ji3Eg==}
+
   '@swagger-api/apidom-parser-adapter-asyncapi-yaml-3@1.8.0':
     resolution: {integrity: sha512-ekIRVp20kntmCabQKmsEoXp6LVAqCf1MJRU94tx+n9NfAL68OVYF/47qxP5IXRyPSapa18oAAUDm09qfAg/8Uw==}
+
+  '@swagger-api/apidom-parser-adapter-json-schema-json-2020-12@1.14.0':
+    resolution: {integrity: sha512-PYB86bWah0dYBVnsFk7yi9E6clRLn45VaBWSE418c2kCI8q7Bpm+URSnR0LUYLHV573BMY7UKpi7/W8fP23f6A==}
+
+  '@swagger-api/apidom-parser-adapter-json-schema-yaml-2020-12@1.14.0':
+    resolution: {integrity: sha512-S869/DexEyiZsybmNvNJW5q/+JMP2PkufKCBjwpxqWCcFFGaJenwjaIvTJX1tfKrpc/cuBlviaKeyNA+cCaWBA==}
+
+  '@swagger-api/apidom-parser-adapter-json@1.14.0':
+    resolution: {integrity: sha512-6dUeLKjA/h62ost0ZMXAUBdfFvSRINuDh1U+9VVHkERq9ZsOmetLon+7T9UGkJPIi2R0r/Qr49LjuMGtnAE5JA==}
 
   '@swagger-api/apidom-parser-adapter-json@1.8.0':
     resolution: {integrity: sha512-hlbtGgsnLumr5LHTxuJrc6d2uDGtbhEikVQGF7UHL2rMMmPBGCIASC1HbdmkFohXFf5I80s7TuMEnelvvGwxIQ==}
 
+  '@swagger-api/apidom-parser-adapter-openapi-json-2@1.14.0':
+    resolution: {integrity: sha512-50dRHYztd1DxZTrKjjoBxvWskRAqn9OdP5JtfO3UkARxG0tNsQrNzcYFuO39OZnBxpE3h+1WChmHNL+c3jvTNw==}
+
   '@swagger-api/apidom-parser-adapter-openapi-json-2@1.8.0':
     resolution: {integrity: sha512-MnuhZKGzQC/MnLADuLyWZnpAcc5Vw9UoUctEkVovADSMfuHKDHg3sCNc2cB1cOB+BjWrWU4L/Vys8TUfS4866g==}
+
+  '@swagger-api/apidom-parser-adapter-openapi-json-3-0@1.14.0':
+    resolution: {integrity: sha512-Q96xoMKQ+tg1/bVD2XmRgFU1HW/T+gb8MtR+UDkpRMEyylPi2ODJE8sfoL/oKlo2RuzHSi0giJ2RnFVkZLZFTg==}
 
   '@swagger-api/apidom-parser-adapter-openapi-json-3-0@1.8.0':
     resolution: {integrity: sha512-mjhDbnW2MkgZ5C2iJgMPZvvOL3MLYkwwwwjGekiCo0IjcWMBUdJ6ArOS3zOjQ5NMbKu1XbYmt4/D53fFLIFcwA==}
 
+  '@swagger-api/apidom-parser-adapter-openapi-json-3-1@1.14.0':
+    resolution: {integrity: sha512-sXzDeTnY/VHH5Fd0gxS9JiOISU/U/YEWwdL+wYXXJPjDr0dddhTSad7+QMxP1BkqBJEIuS87Jmfv5qOAFV79Mw==}
+
   '@swagger-api/apidom-parser-adapter-openapi-json-3-1@1.8.0':
     resolution: {integrity: sha512-nA9AQuGsd1YqZ9QG8CRW0f4YHU9ryY+uU8nevprSiRuAi1FQJPrS30eUgnEs7x1Em7QKU43QmSZmWYpyJCdQZA==}
+
+  '@swagger-api/apidom-parser-adapter-openapi-json-3-2@1.14.0':
+    resolution: {integrity: sha512-vgcy8rsMwxcsS8xtJ0qJwy93zrHZ85YooHtc8ny2zCAKEv7QlKjXYdX1bDUskdxOV3Xh8ZaS5XPBqvL4DFS8/g==}
 
   '@swagger-api/apidom-parser-adapter-openapi-json-3-2@1.8.0':
     resolution: {integrity: sha512-FC/Ktls4mNKY2MtHNmpPHXk5c6sD21dcaHmGGQH+wdovBlei3/xCiWOjYeT+Pr6A1mvMIG5cRhBjra3l5Jdhgw==}
 
+  '@swagger-api/apidom-parser-adapter-openapi-yaml-2@1.14.0':
+    resolution: {integrity: sha512-oQS4SEjBfoEp0MMs2m6+4YIh+tqgs/PklSW9vdIhMbc4tbluM7Ro8tJXeIh3aS5lSyeN7ReJg9aJhzDooeWoAg==}
+
   '@swagger-api/apidom-parser-adapter-openapi-yaml-2@1.8.0':
     resolution: {integrity: sha512-GAc2Ckr5FXvNm8Deh/NnUdQzcqhns/hxysYI9tikhxc14y1rytzmX81ATpVnKouHkZqXXNgDYhoFVG5+QFJYdg==}
+
+  '@swagger-api/apidom-parser-adapter-openapi-yaml-3-0@1.14.0':
+    resolution: {integrity: sha512-WCyBR8Ca1ge8XT54nDvHnoYbGCOpOOb6VOLlzrMOy/ikF7JKR+A9IuqRkqPEuhUjjxr5Dc1Edv4NlivFykEdqA==}
 
   '@swagger-api/apidom-parser-adapter-openapi-yaml-3-0@1.8.0':
     resolution: {integrity: sha512-f9AFCXgdqA1xbUrTCcQ0NqarQqBhpw79M5rmhu5R51pHtaVx9N+FxlHMqGYsdL9/Opq3eKtsd0in0JBC77qZEQ==}
 
+  '@swagger-api/apidom-parser-adapter-openapi-yaml-3-1@1.14.0':
+    resolution: {integrity: sha512-m1CwUYTgK0zvs0AndrdzKuL5FNfez6lag9nEsKfumoJJ1T/kev7Yo3jmPC++lLGsnJGbagIAkZ2nIBC5BuVKvQ==}
+
   '@swagger-api/apidom-parser-adapter-openapi-yaml-3-1@1.8.0':
     resolution: {integrity: sha512-zmWJAspilTYZm6ZtpQJ65U1S+d+wOk6Wwi3TJkRmNDIygmY3jrBEpS65Lrc6D/Mk1bwsKyZN095cXAxCPajt8g==}
+
+  '@swagger-api/apidom-parser-adapter-openapi-yaml-3-2@1.14.0':
+    resolution: {integrity: sha512-4G6gEAp742YgXUocebXTDitiDkVvK30ceZFLvCmKaeuw1VsQJ/yNWGzTxkB25F0qbgdFGzceGJlX9eJx/svlGg==}
 
   '@swagger-api/apidom-parser-adapter-openapi-yaml-3-2@1.8.0':
     resolution: {integrity: sha512-V6Q48ihqpX/IJ98MF9DUpwhGUzN+ZKLQEQm8M7He51geAsKillxDSHOFltdH38BCGW+CpbkEWnWRmzgV4ehjIA==}
 
+  '@swagger-api/apidom-parser-adapter-yaml-1-2@1.14.0':
+    resolution: {integrity: sha512-ckzyyfgJUH+rEajzlrFaCwqc/K19KIIN1V9/zaVugDdxe1LLbtk11RQQa6AetkpeQdYVPzTMHIpKGluGyhZ1Bg==}
+
   '@swagger-api/apidom-parser-adapter-yaml-1-2@1.8.0':
     resolution: {integrity: sha512-uUhXEXwK4G3cVO52cTzoJG6Sbke8pgEFXHK+LMIXTZ0zb3gVfGD4N9bDyGB8Uibr41fK3DjUycIx5x9ZsR8l+Q==}
+
+  '@swagger-api/apidom-reference@1.14.0':
+    resolution: {integrity: sha512-LCp15dZ61tEEMYsZY65qbRTx0KEqwO8j2qNowV3rADQa91x3QKPo8V1mcGAh+DUGun3m3hjh72c5rLsJCb6zSg==}
 
   '@swagger-api/apidom-reference@1.8.0':
     resolution: {integrity: sha512-TnNqXiWMXgzS3uDm8KYdgJ+O+w2TAcGrQpmdQot2XlDw5pxxzmH22A0xgdmvv/XYB9BBMBPzmxaI/MPiF9i8kg==}
@@ -3736,6 +3859,15 @@ packages:
 
   '@swc/helpers@0.2.14':
     resolution: {integrity: sha512-wpCQMhf5p5GhNg2MmGKXzUNwxe7zRiCsmqYsamez2beP7mKPCSiu+BjZcdN95yYSzO857kr0VfQewmGpS77nqA==}
+
+  '@tanstack/react-virtual@3.14.10':
+    resolution: {integrity: sha512-SRyoUbdFMRHuYXMijV5H4ZarQWpXkj3iANq8OFre+pybeVap8ZJjZ3Nz9bVjx4d8PfobVUQUdKyyyHYk3E+djw==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
+  '@tanstack/virtual-core@3.17.8':
+    resolution: {integrity: sha512-BfEvehNpOT75r5Ksc5xW6NZuXujTfb7nlSEyVu4XHG3gdxNg1KqXruWbDewXOUaUYIo4oRbSfkjIajz4MAT8tA==}
 
   '@tree-sitter-grammars/tree-sitter-yaml@0.7.1':
     resolution: {integrity: sha512-AynBwkIoQCTgjDR33bDUp9Mqq+YTco0is3n5hRApMqG9of/6A4eQsfC1/uSEeHSUyMQSYawcAWamsexnVpIP4Q==}
@@ -3906,6 +4038,9 @@ packages:
   '@types/hast@2.3.10':
     resolution: {integrity: sha512-McWspRw8xx8J9HurkVBfYj0xKoE25tOFlHGdx4MJ5xORQrMGZNqJhVQWaIbm6Oyla5kYOXtDiopzKRJzEOkwJw==}
 
+  '@types/hast@3.0.5':
+    resolution: {integrity: sha512-rp/ezSWaD1m44dPKICGhiskI13nVr7qTloFwDa/IYkhhf5nzwP+zIQcIJh3WIFSBOy/H1PzB40jPjMDksN4F+g==}
+
   '@types/http-errors@2.0.5':
     resolution: {integrity: sha512-r8Tayk8HJnX0FztbZN7oVqGccWgw98T/0neJphO91KkmOzug1KkofZURD4UaD5uH8AqcFLfdPErnBod0u71/qg==}
 
@@ -3950,6 +4085,9 @@ packages:
 
   '@types/node@22.20.5':
     resolution: {integrity: sha512-U2+DNr+wSjpsTS/wZGYHq7GcwfuSmKiKvoPvK22zwTlRhU91yOniN4qRR5KhIjvif7ysw/dz/hKmfDH0Ris4aA==}
+
+  '@types/prismjs@1.26.6':
+    resolution: {integrity: sha512-vqlvI7qlMvcCBbVe0AKAb4f97//Hy0EBTaiW8AalRnG/xAN5zOiWWyrNqNXeq8+KAuvRewjCVY1+IPxk4RdNYw==}
 
   '@types/qs@6.15.0':
     resolution: {integrity: sha512-JawvT8iBVWpzTrz3EGw9BTQFg3BQNmwERdKE22vlTxawwtbyUSlMppvZYKLZzB5zgACXdXxbD3m1bXaMqP/9ow==}
@@ -4143,231 +4281,231 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@valtimo/access-control-management@13.54.0':
-    resolution: {integrity: sha512-6kVRDEcWDqTSBZKEtYht1Ss0OcQ/OYJLTmhr6VfgCnUNTW2/owcdMkiHEPPQ04LoyVn/XjUs/gWSnvBMMuqJiw==}
+  '@valtimo/access-control-management@13.55.1':
+    resolution: {integrity: sha512-YQmFBTChRDdSb7x9JoFpAcZrb1emxVrGG37JtuNOE+pyEqvMiY38nPYa1kg9uPpzjXtitcoUy09QEvdTzK/Cyw==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/access-control@13.54.0':
-    resolution: {integrity: sha512-tzlRZnOykZW6lmhJlkrY2dUZYLwYKQNlSE0j0P7D6hGMzgzew6kVA6wfBGBpqw8esaWFn3EP2LPKb5CEQHDtbw==}
+  '@valtimo/access-control@13.55.1':
+    resolution: {integrity: sha512-CzL/laJb6NyowvA0tmo8V9QtZCNgrZ4n2ZDx9cbVFwMfamCufmDgCrrjq3MkqkjopI6edpR60AYhjIaf2FW48A==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/account@13.54.0':
-    resolution: {integrity: sha512-Bys/nWqsmhLDXeHXp2JrQ7SfiOjvZF2tUfMBrspxv3JqyaAS176c9o+ypeKxmuWgK2TUXU/zmYdhG3tQNHRBxw==}
+  '@valtimo/account@13.55.1':
+    resolution: {integrity: sha512-ZZZGDG4vF9rA42PRuiM6FceJjk12jD2BLKsCAefkRXJMmI4WfBk45RqnFtWV8XxDjjdDdSIPbvHmjwolUV0sqA==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/analyse@13.54.0':
-    resolution: {integrity: sha512-ccIcWBFsSpkBau2Lvgfd7rd5i7S/SJWINB+bCIDnIP3cNCNdA7c3A4jC6paS9jcpuJYzfYdtXzmoj6RPHhLA2w==}
+  '@valtimo/analyse@13.55.1':
+    resolution: {integrity: sha512-t2TWwSCXvOxIRmsNkR2Ko49SD9l+eD4X0rr6dYXe3ncxpORnczVWC0hCjaS4ovI6BhXPcUqIaXoNQEDyOXrRgA==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/bootstrap@13.54.0':
-    resolution: {integrity: sha512-LNJ1lUuGzQvwmdQix7Wj/j1qtviTkjGORyybbiQSkkR0RM8RoC1XVZnz1wkJvGxO4+qilgIa1gaRz3f3rQ/Z7w==}
+  '@valtimo/bootstrap@13.55.1':
+    resolution: {integrity: sha512-NSZBBJvSqK4vp0/2gNelc/VR6zHd46Or3g/wu6eWF3Tvsc5VEK7ns0gtJ110NKlREvLZO5lf5QbdcHnxuBl83A==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/building-block-management@13.54.0':
-    resolution: {integrity: sha512-EKUA8odqMcxOleSqnJEQ1+2SK6gStSmPfdTEq1juFnCY3OvcR6ct0JvejcYNSuaxfxCp4dwG6BDMrk34L0104w==}
+  '@valtimo/building-block-management@13.55.1':
+    resolution: {integrity: sha512-ot28rHwPK2DNYI/IdHAupkTOmbi9DovuHvi8Y+cNf05+UOTwblC76BnKNXAE0RYed4gmHFLBpohCtpo8sVFBLw==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/case-management@13.54.0':
-    resolution: {integrity: sha512-Lp1zv6udGamuh8Oo1eucQTdLXVuUvZOer9Wfhp5BWao3iy03Dm+442tWZXy2RYjKoRshJAbUumJUDgRSBs8n8g==}
+  '@valtimo/case-management@13.55.1':
+    resolution: {integrity: sha512-PK/YysgFV2Rgd+t/+PHTvGUuWz27FcYvMs66inVqqOLZeoACD31t5w90d/1a17IWRL7oHhsDlHKEuUPUULbaxA==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/case-migration@13.54.0':
-    resolution: {integrity: sha512-OQ4d4sU77E3Pe4ALzDEf1r7chv4g6AjbNrtMBFihcB8ie81PzNZF1HRQs0jpZIhU4DA7nHiNew98IsCC4FHvMA==}
+  '@valtimo/case-migration@13.55.1':
+    resolution: {integrity: sha512-WjqsrvwcOkdtWGDsfldZhauJc0bH5c3mSdbQYGUQ82TJtWCsRlgmj9OlU3bXdS7qrdrX9u2Kn6dDtfcgd2FN7Q==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/case@13.54.0':
-    resolution: {integrity: sha512-N+hZNAHPXT1PwHXOz3zxqFlg/Sk5fmKz11MQf718jZIMXhetJqL6RtPn5ne47gTzWCBlkzcK1IzNs/+rSxqDdQ==}
+  '@valtimo/case@13.55.1':
+    resolution: {integrity: sha512-XaCeh36OkiZcNZQHAnDq8RDoD9U6q6L/yykkAvR6/ATr3EBfpg9KgXAxFRQIqi1/wFybax3ZcQCYOClKJBftHA==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/choice-field@13.54.0':
-    resolution: {integrity: sha512-QB545d46CINni8V2F3HG1QIWrRAPvX8Yj3ymkV3I3t9EFTmNJbuL8+727XU542fWp6Ipj2SAFTWlRW4v6ccAoQ==}
+  '@valtimo/choice-field@13.55.1':
+    resolution: {integrity: sha512-wUS6F5Pz64bFvGf2pq/fbDmbY9xlJ5gYXrGi0rUe8VZpTWaxqkBycCjM4m+Q5PlPojqM1+4LJmpK6XqDXe48Fg==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/components@13.54.0':
-    resolution: {integrity: sha512-Ng6gDqLML+/weL6dmY7lKZibbXJPUtNCEXPKnpfjW8B3vvOjlvk35tUg6+Yh+4rjg9e5GETvT64R90f1lRFbTw==}
+  '@valtimo/components@13.55.1':
+    resolution: {integrity: sha512-xgTCvfGcN4U0soMlSL+Lep7uF1mcaEAMmpHj0lyxUeLMDx6Z3EJf3a6unKXiN8ELWpo+6hewBxDd4dWF9ZYyNQ==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
       '@angular/elements': 19.2.25
 
-  '@valtimo/dashboard-management@13.54.0':
-    resolution: {integrity: sha512-iNwHesoQebW2SvoZHDFYEHJVbeyc+S0gAcsfHf0XcwGFe6JkRNAI+/ETzemc87VR/vhogcKA0SZRZW9McNfvKg==}
+  '@valtimo/dashboard-management@13.55.1':
+    resolution: {integrity: sha512-1P/W1dpvOfU7FR+HpSK1+RF8k51s4aCuAOTqrRHhmP/SAk0s1mIP31gKLWAEOzom+FThz0uWwH2xq7NZba3jrg==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/dashboard@13.54.0':
-    resolution: {integrity: sha512-9Pt2YHjdaHxkfIaRU5HlfPubBsiz3jOiSHx0t+bSUY2TxT6MWoLxkLli3OP05w2mB9max65vrQi6dn6NZaYeSQ==}
+  '@valtimo/dashboard@13.55.1':
+    resolution: {integrity: sha512-xuzSQve41BPQhgaesZbEfV00yQwkBKmRyK4kgWGAYsKFeax6OCbWL5df0mIasfeS6MhueT6gVW8fgXZNcGEV3A==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/decision@13.54.0':
-    resolution: {integrity: sha512-YQCNNYjDsBiP0d9aBm6eUY90Y2KEeQASa7csKQeG1tEx/39PJR3k+w1+mwbteW7edPy3NfELNQBs/8e5evOv9w==}
+  '@valtimo/decision@13.55.1':
+    resolution: {integrity: sha512-YnpXx15mY9sgEOrIs+VT02CvV+9Yhe9Sd+Mf5HJloQ5MyKta30kbssx07jAG/RQyWrWeHk5/dZGt9GHWnuqc7Q==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/document@13.54.0':
-    resolution: {integrity: sha512-rnzLIP9zby56xQibqAamUqXxbcxwfs/qRQ46daTd7cY80p46dfrd/lTi66OFRn/gni2KlGT9FlnUaCkLfijIQg==}
+  '@valtimo/document@13.55.1':
+    resolution: {integrity: sha512-FoqNEzH+lOf+s/GK/emrQwqsiozQQ8KnltsNdgJv0liXoz/S9Qbwjek6M/jkF6DGrBuBt8nnriEZt1IdgHskeg==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/form-flow-management@13.54.0':
-    resolution: {integrity: sha512-OM/VvnwHUntlq1PiGfPBledULWohrBt2araGGyQPg1y5MUyJiy9lT/x5+V3+I86ypdBOMcGTreDgr9bKLoHcLQ==}
+  '@valtimo/form-flow-management@13.55.1':
+    resolution: {integrity: sha512-JE/AphsIPwiMfoOTVHeB8N96R9UcThEKmci1jTVZFTwaA5OX7rGpeq9lSdRMnFwV1dBuEX3GJTnCX3MzbPm10w==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/form-management@13.54.0':
-    resolution: {integrity: sha512-fMzMCJ6WD/CKw3o1oOunL2w09bw725IQ4xEVBeQlIIMDX8aDrQNILeHTijZt2vEYRZMMwrS78YZzwo0Z4CTGuw==}
+  '@valtimo/form-management@13.55.1':
+    resolution: {integrity: sha512-m638zwTWbJbEcKA8OTffa/ZeoTUzoY6AbunE33mrWEDnROzysp/Yo6EyRfOGBHwAbZh6IzNaE+4oRM23yt8spw==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/form@13.54.0':
-    resolution: {integrity: sha512-7mNGgOTqMmz/LlRglcfcFjs8Km98W+e/TWCQ+/37NqBj9umKeY7VpcF/8rJqp15m6h9r0Lau52hr9tOw2vUoZw==}
+  '@valtimo/form@13.55.1':
+    resolution: {integrity: sha512-MPLxHG+l3/FpN9sAqW3p1Y3260jJ/B+zLTdjQYs/s5rMNvDgs36b6aRJpX/5gKagfh51aKhTao1A9JVzIclFlw==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/keycloak@13.54.0':
-    resolution: {integrity: sha512-2t5Q4P1gb4K0XNXovndv9LeZzRrIgt7BHaOAlll4hvdwzk4ELV2YwvbwQ+AsknDMcmEr8Z27wMVEepc2oYP4+Q==}
+  '@valtimo/keycloak@13.55.1':
+    resolution: {integrity: sha512-t1+MiZoyaogrINb4X+WJt2631CetzX4Kv07zx0LayGLaKLy3XSJAOWdPhZxsdBVckGFZ2sHsBNZpMUwchs8R8g==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/layout@13.54.0':
-    resolution: {integrity: sha512-DnAKCfxzah8bCAuHkMydt07JdRtIPbvnLgaLtIzR1IJkoSPlhoCJ2W/VcAba19sH5Uki353D9OqDCh4bmZ/BDw==}
+  '@valtimo/layout@13.55.1':
+    resolution: {integrity: sha512-8eWBB8Q76AVDtRRtqheUQFw/fYZ6v63wTCVlp/7O7G54GG7Qsc61lV9Vldelpu8Y0p4Tg/J8E9ltJky2VP5VFg==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/logging@13.54.0':
-    resolution: {integrity: sha512-pmSCHU+v2FQC6cKPly6rBfXNewktaatGsD7uFrR70HGwubLrlNPc+xsyRBsIAiFNsSpVuP/DGTussnxVG0DrjQ==}
+  '@valtimo/logging@13.55.1':
+    resolution: {integrity: sha512-/D4GOQUZUxapg5s3a9Truildm0LWx2ulndD3mP4F3ahoBtV/Cv2kOkHw7msxrH0xQ7pt1oYdi0B90oyWvWuXhw==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/migration@13.54.0':
-    resolution: {integrity: sha512-R66zo9mkr/xm5BSnWA82fIaHhK0CKlYRoiMyIHNklxgCNyVW0tsSEHyM/6eO33WyanOcQrtg/IQ28x/teXheZg==}
+  '@valtimo/migration@13.55.1':
+    resolution: {integrity: sha512-Xly4LP6BhfD8qt3IQFS0oaf3i+bOpOujCzSxP1L0J9bwrp6vszatAPsp5BjVmSAqtVn9Cgfi9/sl+i3QhgVmRQ==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/milestone@13.54.0':
-    resolution: {integrity: sha512-/Ejv0YarJozyfVfUrG0b54EcbIgUnRMvHOA+jsOwaxLfvkIdYim61+iZtdBNRz7xpFMEdTtHm3syL6y/KEYbSQ==}
+  '@valtimo/milestone@13.55.1':
+    resolution: {integrity: sha512-gX+tt29+HjDpXvCXQNBG4CwhmAuk4kO5U84OGWmpFgxWVVMH6J1NMBEQQwPlqSmvA9IE4NOdY7CKs1jbhPsZBQ==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/object-management@13.54.0':
-    resolution: {integrity: sha512-oyx6Mx+hvWCwm/HlTP8tqCSsNw7jEUA39kLrqUABBd3us+1IHsuMqPWwGGcnrU6Yw7KjXs1wxg/FqJj/DDnzgg==}
+  '@valtimo/object-management@13.55.1':
+    resolution: {integrity: sha512-Zp8hYuLSK4MGFBeUJUeufzppYZMW+0CShfsYUgEQjv/OcT1RqyUbIHZVGOmJ4ilqniNy1M9fYebM2gPOxJlNzQ==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/object@13.54.0':
-    resolution: {integrity: sha512-3bFmX0Feaj3PaiKdpc3b2KnDpK69O68q7coVx62Ov3w9RHp35LappEVF5Ow+mk/xY6hTP4wiFw04jdUB3IuMjg==}
+  '@valtimo/object@13.55.1':
+    resolution: {integrity: sha512-FkWCu/xVi/r3iNGN0rZPrU5g3LYIV6OWP9CkcEFjKOsEdojLrCkNLEcAG8v1mYH2GKRcnOJ0dcGszSkqQP0QIQ==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/plugin-management@13.54.0':
-    resolution: {integrity: sha512-Qz0bbwdHtRnESZa1Fh4/Q/reG6UjeDxMJAtca37bpKG1XXL+hVYYQBEf1H5CLzoNZatqAzdBqaLXe4uQmfIM5Q==}
+  '@valtimo/plugin-management@13.55.1':
+    resolution: {integrity: sha512-eNuDHa3Nd10IkGqYR+l+9kpy9ctIXzT5BFyAmQEvzG36VJR/5k/Byj4oZ7vLc94aTbigsyOm6MImDDrTe8Z9Kw==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/plugin@13.54.0':
-    resolution: {integrity: sha512-9kgBQguAr2emK80gOL9xnKfexFSolbpxYliFrHztmF69khlherirugRvB4Ku1m6hZepsuLi8dzbcneWcmvN7dg==}
+  '@valtimo/plugin@13.55.1':
+    resolution: {integrity: sha512-pggQou0b8NY2lNCDGkGgJkyLbdkNW06pnImg8YR+hOwHOg1ysd/kEA9n9usX5Qn09DB+ku9SEYhBcafN4KSaMA==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/process-link@13.54.0':
-    resolution: {integrity: sha512-KzFXx/BpyovTuHeWNWiPGFa8v+BDhQyIbM5zlmBOVl2Wz5AK/ueXv7qNUhD9zUqWoCrjrUwl7Nlpt/V+qXTqRw==}
+  '@valtimo/process-link@13.55.1':
+    resolution: {integrity: sha512-t8nuMMb1dOhty0gr4scvAOnJgP0lHXFUifqHbNg381qXBZUHxRQCmzjk/NJLuVMjLGtf9KbIHQ9PfPG28vHhHA==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/process-management@13.54.0':
-    resolution: {integrity: sha512-vtcQxDoZrkHC4WpZgE8/wo5Ovr1PqHFh58nrKbI0Wvj9n1fcp9UcfMEWiqfraVqGZYQH9UYVugfLPH3loqDWIw==}
+  '@valtimo/process-management@13.55.1':
+    resolution: {integrity: sha512-qeFianreh9BNvJ+GwBTJaTJRWP9M1gkFtHOe/5jjRUUlM0/Fx9NKdYiQuthNiTURC/NC2/ZmcdvbS81VIuAN8w==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/process@13.54.0':
-    resolution: {integrity: sha512-3tJ9Wkwn7GmwWD7ksCjf1CPAOkntAcvp1r/UUCT5WL/Wl/bvoeCXLTnLA/P80BJnMjYEOe7DpZLoIlnzw+Qwrg==}
+  '@valtimo/process@13.55.1':
+    resolution: {integrity: sha512-HPWQPfAySvkmE5fY8YwYQX52x0LRC2oNZ3+o08eLMbr2Sstt2tZvkt9QQN6jP/Nnw9bmRNzT6ZPFpuCSUZG9xQ==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/resource@13.54.0':
-    resolution: {integrity: sha512-+cG74oVFWZS0ga8k3j/VtDp+Ff0GuaWpw5hCpVBFP/u0/t0/jSo68AUECyN8PJIAHrEd7n8zPr0+mjnTTM1YfQ==}
+  '@valtimo/resource@13.55.1':
+    resolution: {integrity: sha512-eE9kVWUdFSf+OOaD8ixh6QF7Q1taSa50AZae2BCcIg3uI/m3V60zcHhf4MKRVbVugpJ50OFwvU9RfyliLJOK6g==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/security@13.54.0':
-    resolution: {integrity: sha512-FDSZqmpvzHxghaSDBhFV8WMVZiTG7Z36BRXv7tq9N8+HxhO29qsV0f/jlwgQauE10Y3br8wDlE0EvnDtxPSXcQ==}
+  '@valtimo/security@13.55.1':
+    resolution: {integrity: sha512-DSptJZ+MdOSRzNzovQ9V+ntZu4BAfdWgJtYtomNCB/I2C6PZWiV/MblcE1wGQKAF7dM+NZ2nmkFgSPqHZZxejw==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/shared@13.54.0':
-    resolution: {integrity: sha512-dc8xbjxT6zcNfHcCeNbT7qJk6UNlefKqKVecg5jvjjJS+PBhaS28LGuN5ERwLzqcN2yv5Oc+if8ZHJhTTbG/wA==}
+  '@valtimo/shared@13.55.1':
+    resolution: {integrity: sha512-mu2vxvZgsWffFq1vF0sKe5W0v3uEqWW6liUz7Sxh4PinxQ1W/eJzLOxgbuv3Ej41KLrjJv3nx/qZr6WB3JjkNg==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/sse@13.54.0':
-    resolution: {integrity: sha512-vwMEoNzVFidG7x1EuInpZ2rxyZlEwaS4KtL5LF7JoskRSqem0GzGMStYNSfuzFr0lwHAkekCsiSV8w7DRe9zhw==}
+  '@valtimo/sse@13.55.1':
+    resolution: {integrity: sha512-XQZECXo/I+BN+/QEYt4/Mv91qZXj7DxfYIQzbR612HlEPPfWCdPfkq7/d9SLLXO05WDXjfqUpfrF9753zcXRoQ==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/swagger@13.54.0':
-    resolution: {integrity: sha512-Y9a7nKo2eyvf2h+pU6FmPyevypG4p4YLIQ194SVOdWIvtKopVBR9iXW+Krr8YrGBsmhky8igdPOPfPMG2QXb8A==}
+  '@valtimo/swagger@13.55.1':
+    resolution: {integrity: sha512-ny3Ib9IDCYgzp/DAbLuOUYrjn5Pq1lY7/zD8axqMUIE5cr6ZoYzYTlVyX0Bzzct4pS0x1qzhKJCTZuiBMyb/5A==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/task-management@13.54.0':
-    resolution: {integrity: sha512-RtrIYuudlFsoBj9trlNm6ervK1sl3dXTR/sfAPVu1VfSprsYR+tg2vbgRn6lXKXPYaGNY4N6YbYCahXCd4rB2Q==}
+  '@valtimo/task-management@13.55.1':
+    resolution: {integrity: sha512-4WVIjoCcisGXGI3LCWMv6rkpEaHEkm2xyeViBC8s8XKIOnhud+OAvCg6qCyc77fvsST8GMdy0bCzdDYbY+2hFA==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/task@13.54.0':
-    resolution: {integrity: sha512-wEyRvsNukBvHpBs1tx3Itkr5BgTBU29RWP5yG7Pf6whDr0rpxyqEd6kWtmWcs6I0j43Rog9aXod424L48P+AcQ==}
+  '@valtimo/task@13.55.1':
+    resolution: {integrity: sha512-Oy6CBbFhljx7Y10IwFpevx/PwYYyzcv6lUq2QZErut3hf+UdGSNRAtYGyP/KpWZUnAJETM9gqiFDkk+3qn7EDQ==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/teams@13.54.0':
-    resolution: {integrity: sha512-bKb2eAX20jk34V8RQgkqpUoAf2xgHLlPqLuNph2quYJmD0YV+z6j6tw8ohVgVWW3Z4g5uI3qIuQrMDMP0THdoQ==}
+  '@valtimo/teams@13.55.1':
+    resolution: {integrity: sha512-+x2H/a4t9Fe/LFj0RszWDnHCUjXhoQjoyACCjCFLHzYWmxU6TRqyo0LfjcuZ75vlp2wYS+jRceCUpffReFzxnQ==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
@@ -4912,11 +5050,20 @@ packages:
   character-entities-legacy@1.1.4:
     resolution: {integrity: sha512-3Xnr+7ZFS1uxeiUDvV02wQ+QDbc55o97tIV5zHScSPJpcLm/r0DFPcoY3tYRp+VZukxuMeKgXYmsXQHO05zQeA==}
 
+  character-entities-legacy@3.0.0:
+    resolution: {integrity: sha512-RpPp0asT/6ufRm//AJVwpViZbGM/MkjQFxJccQRHmISF/22NBtsHqAWmL+/pmkPWoIUJdWyeVleTl1wydHATVQ==}
+
   character-entities@1.2.4:
     resolution: {integrity: sha512-iBMyeEHxfVnIakwOuDXpVkc54HijNgCyQB2w0VfGQThle6NXn50zU6V/u+LDhxHcDUPojn6Kpga3PTAD8W1bQw==}
 
+  character-entities@2.0.2:
+    resolution: {integrity: sha512-shx7oQ0Awen/BRIdkjkvz54PnEEI/EjwXDSIZp86/KKdbafHh1Df/RYGBhn4hbe2+uKC9FnT5UCEdyPz3ai9hQ==}
+
   character-reference-invalid@1.1.4:
     resolution: {integrity: sha512-mKKUkUbhPpQlCOfIuZkvSEgktjPFIsZKRRbC6KWVEMvlzblj3i3asQv5ODsrwt0N3pHAEvjP8KTQPHkp0+6jOg==}
+
+  character-reference-invalid@2.0.1:
+    resolution: {integrity: sha512-iBZ4F4wRbyORVsu0jPV7gXkOsGYjGHPmAyv+HiHG8gi5PtC9KI2j1+v8/tlibRvjoWX027ypmG/n0HtO5t7unw==}
 
   chardet@2.1.1:
     resolution: {integrity: sha512-PsezH1rqdV9VvyNhxxOW32/d75r01NY7TQCmOqomRo15ZSOKbpTFVsfjghxo6JloQUCGnH4k1LGu0R4yCLlWQQ==}
@@ -5050,6 +5197,9 @@ packages:
 
   comma-separated-tokens@1.0.8:
     resolution: {integrity: sha512-GHuDRO12Sypu2cV70d1dkA2EUmXHgntrzbpvOB+Qy+49ypNfGgFQIC2fhhXbnyrJRynDCAARsT7Ou0M6hirpfw==}
+
+  comma-separated-tokens@2.0.3:
+    resolution: {integrity: sha512-Fu4hJdvzeylCfQPp9SGWidpzrMs7tTrlu6Vb8XGaRGck8QSNZJJp538Wrb60Lax4fPwR64ViY468OIUTbRlGZg==}
 
   commander@13.1.0:
     resolution: {integrity: sha512-/rFeCpNJQbhSZjGVwO9RFV3xPqbnERS8MmIQzCtD/zl6gpJuV/bMLuN92oG3F7d8oDEHHRrujSXNUr8fpjntKw==}
@@ -5462,6 +5612,9 @@ packages:
 
   decimal.js@10.6.0:
     resolution: {integrity: sha512-YpgQiITW3JXGntzdUmyUR1V812Hn8T1YVXhCu+wO3OpS4eU9l4YdD3qjyiKdV6mvV29zapkMeD390UVEf2lkUg==}
+
+  decode-named-character-reference@1.3.0:
+    resolution: {integrity: sha512-GtpQYB283KrPp6nRw50q3U9/VfOutZOe103qlN7BPP6Ad27xYnOIWv4lPzo8HCAL+mMZofJ9KEy30fq6MfaK6Q==}
 
   decompress-response@6.0.0:
     resolution: {integrity: sha512-aW35yZM6Bb/4oJlZncMH2LCoZtJXTRxES17vE3hoRiowU2kWHaJKFkSBDnDR+cm9J+9QhXmREyIfv0pji9ejCQ==}
@@ -6407,8 +6560,14 @@ packages:
   hast-util-parse-selector@2.2.5:
     resolution: {integrity: sha512-7j6mrk/qqkSehsM92wQjdIgWM2/BW61u/53G6xmC8i1OmEdKLHbk419QKQUjz6LglWsfqoiHmyMRkP1BGjecNQ==}
 
+  hast-util-parse-selector@4.0.0:
+    resolution: {integrity: sha512-wkQCkSYoOGCRKERFWcxMVMOcYE2K1AaNLU8DXS9arxnLOUEWbOXKXiJUNzEpqZ3JOKpnha3jkFrumEjVliDe7A==}
+
   hastscript@6.0.0:
     resolution: {integrity: sha512-nDM6bvd7lIqDUiYEiu5Sl/+6ReP0BMk/2f4U/Rooccxkj0P5nm+acM5PrGJ/t5I8qPGiqZSE6hVAwZEdZIvP4w==}
+
+  hastscript@9.0.3:
+    resolution: {integrity: sha512-1ALZXSmCGmW3h8AMz4R4+QKSKFi7sNgXLVwmwB8FYVtl1CwQ3WDkSAEY/d5tp1g/vbQgq2s1WlHgfO3jbw1TsA==}
 
   heatmap.js-fixed@2.0.2:
     resolution: {integrity: sha512-BAx6zoxmGuwieIQsddaVlZXguZ0iSdghNLsVY0O9u5lFsIzJWZ1hu4I+ECGkruiYcIBh4htilyO+q8K8DJ8FWA==}
@@ -6637,8 +6796,14 @@ packages:
   is-alphabetical@1.0.4:
     resolution: {integrity: sha512-DwzsA04LQ10FHTZuL0/grVDk4rFoVH1pjAToYwBrHSxcrBIGQuXrQMtD5U1b0U2XVgKZCTLLP8u2Qxqhy3l2Vg==}
 
+  is-alphabetical@2.0.1:
+    resolution: {integrity: sha512-FWyyY60MeTNyeSRpkM2Iry0G9hpr7/9kD40mD/cGQEuilcZYS4okz8SN2Q6rLCJ8gbCt6fN+rC+6tMGS99LaxQ==}
+
   is-alphanumerical@1.0.4:
     resolution: {integrity: sha512-UzoZUr+XfVz3t3v4KyGEniVL9BDRoQtY7tOyrRybkVNjDFWyo1yhXNGrrBTQxp3ib9BLAWs7k2YKBQsFRkZG9A==}
+
+  is-alphanumerical@2.0.1:
+    resolution: {integrity: sha512-hmbYhX/9MUMF5uh7tOXyK/n0ZvWpad5caBA17GsC6vyuCqaWliRG5K1qS9inmUhEMaOBIW7/whAnSwveW/LtZw==}
 
   is-array-buffer@3.0.5:
     resolution: {integrity: sha512-DDfANUiiG2wC1qawP66qlTugJeL5HyzMpfr8lLK+jMQirGzNod0B12cFB/9q838Ru27sBwfw78/rdoU7RERz6A==}
@@ -6688,6 +6853,9 @@ packages:
   is-decimal@1.0.4:
     resolution: {integrity: sha512-RGdriMmQQvZ2aqaQq3awNA6dCGtKpiDFcOzrTWrDAT2MiWrKQVPmxLGHl7Y2nNu6led0kEyoX0enY0qXYsv9zw==}
 
+  is-decimal@2.0.1:
+    resolution: {integrity: sha512-AAB9hiomQs5DXWcRB1rqsxGUstbRroFOPPVAomNk/3XHR5JyEZChOyTWe2oayKnsSsr/kcGqF+z6yuH6HHpN0A==}
+
   is-docker@3.0.0:
     resolution: {integrity: sha512-eljcgEDlEns/7AXFosB5K/2nCM4P7FQPkGc/DWLy5rmFEWvZayGrik1d9/QIY5nJ4f9YsVvBkA6kJpHn9rISdQ==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
@@ -6727,6 +6895,9 @@ packages:
 
   is-hexadecimal@1.0.4:
     resolution: {integrity: sha512-gyPJuv83bHMpocVYoqof5VDiZveEoGoFL8m3BXNb2VW8Xs+rz9kqO8LOQ5DH6EsuvilT1ApazU0pyl+ytbPtlw==}
+
+  is-hexadecimal@2.0.1:
+    resolution: {integrity: sha512-DgZQp241c8oO6cA1SbTEWiXeoxV42vlcJxgH+B3hi1AiqqKruZR3ZGF8In3fj4+/y/7rHvlOZLZtgJ/4ttYGZg==}
 
   is-inside-container@1.0.0:
     resolution: {integrity: sha512-KIYLCCJghfHZxqjYBE7rEy0OBuTd5xCHS7tHVgvCLkx7StIoaxwNW3hCALgEUjFfeRk+MG/Qxmp/vtETEF3tRA==}
@@ -7755,6 +7926,10 @@ packages:
     resolution: {integrity: sha512-Z4SmBUweYa09+o6pG+eASabEpP6QkQ70yHj351pQoEXIs8uHbaU2DWVmzBANKgflPa47A50PtB2+NgRpQvr7vA==}
     engines: {node: '>= 10'}
 
+  neotraverse@1.0.1:
+    resolution: {integrity: sha512-WmmLty1YWwJl9yZi77v2dVIV6X2kuYV8YYBI/G3LWGKdGHmHUvL1z7FW0iDvEvGAwNEoc5x1tOOOyDnf5jJw/w==}
+    engines: {node: '>= 10'}
+
   ng-multiselect-dropdown@1.0.0-beta.19:
     resolution: {integrity: sha512-bfA5nUif9YnF0AI24tjI34MvV9Sjx3kmoYhTUpaO2VP3ftMlDlFvizBOoLM0rkBe+x2fAEU+pz+Vk/QRUA5RIQ==}
     peerDependencies:
@@ -8127,6 +8302,9 @@ packages:
   parse-entities@2.0.0:
     resolution: {integrity: sha512-kkywGpCcRYhqQIchaWqZ875wzpS/bMKhz5HnN3p7wveJTkTtyAB/AlnS0f8DFSqYW1T82t6yEAkEcB+A1I3MbQ==}
 
+  parse-entities@4.0.2:
+    resolution: {integrity: sha512-GG2AQYWoLgL877gQIKeRPGO1xF9+eG1ujIb5soS5gPvLQ1y2o8FL90w2QWNdf9I361Mpp7726c+lj3U0qK1uGw==}
+
   parse-headers@2.0.6:
     resolution: {integrity: sha512-Tz11t3uKztEW5FEVZnj1ox8GKblWn+PvHY9TmJV5Mll2uHEwRdR/5Li1OlXoECjLYkApdhWy44ocONwXLiKO5A==}
 
@@ -8385,6 +8563,9 @@ packages:
   property-information@5.6.0:
     resolution: {integrity: sha512-YUHSPk+A30YPv+0Qf8i9Mbfe/C0hdPXk1s1jPVToV8pk8BQtpw10ct89Eo7OWkutrwqvT0eicAxlOg3dOAu8JA==}
 
+  property-information@7.2.0:
+    resolution: {integrity: sha512-IAtzIB6sUiWaJYrX9smp3V46pBGbBeLFRGdh25kg1334VcBlD8HzhPeNIWQH9zhGmo2itIe25EHt9dQP7G5hmg==}
+
   protocol-buffers-schema@3.6.1:
     resolution: {integrity: sha512-VG2K63Igkiv9p76tk1lilczEK1cT+kCjKtkdhw1dQZV3k3IXJbd3o6Ho8b9zJZaHSnT2hKe4I+ObmX9w6m5SmQ==}
 
@@ -8481,6 +8662,11 @@ packages:
     peerDependencies:
       react: ^15.3.0 || 16 || 17 || 18
 
+  react-copy-to-clipboard@5.1.1:
+    resolution: {integrity: sha512-s+HrzLyJBxrpGTYXF15dTgMjAJpEPZT/Yp6NytAtZMRngejxt6Pt5WrfFxLAcsqUDU6sY1Jz6tyHwIicE1U2Xg==}
+    peerDependencies:
+      react: '>=15.3.0'
+
   react-debounce-input@3.3.0:
     resolution: {integrity: sha512-VEqkvs8JvY/IIZvh71Z0TC+mdbxERvYF33RcebnodlsUZ8RSgyKe2VWaHXv4+/8aoOgXLxWrdsYs2hDhcwbUgA==}
     peerDependencies:
@@ -8529,8 +8715,26 @@ packages:
       redux:
         optional: true
 
+  react-redux@9.3.1:
+    resolution: {integrity: sha512-vxMLT0lalUjbZPkoTepWyKAZbjIIFssNx/CEL9lTfwQBU6XpkGSmCNdcCIrkOBUgB68uftZMnbXVb6DwGnhRKQ==}
+    peerDependencies:
+      '@types/react': ^18.2.25 || ^19
+      react: ^18.0 || ^19
+      redux: ^5.0.0
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      redux:
+        optional: true
+
   react-syntax-highlighter@15.6.6:
     resolution: {integrity: sha512-DgXrc+AZF47+HvAPEmn7Ua/1p10jNoVZVI/LoPiYdtY+OM+/nG5yefLHKJwdKqY1adMuHFbeyBaG9j64ML7vTw==}
+    peerDependencies:
+      react: '>= 0.14.0'
+
+  react-syntax-highlighter@16.1.2:
+    resolution: {integrity: sha512-4dM0+mYtfnhgwYWAvFx56fgyjIYk2yFopfiICFvMDhRfeSGRNd+ngFALdPD9q7llyGAmiE6pzOSOwI8Lf9ca1w==}
+    engines: {node: '>= 16.20.2'}
     peerDependencies:
       react: '>= 0.14.0'
 
@@ -8573,6 +8777,9 @@ packages:
 
   refractor@3.6.0:
     resolution: {integrity: sha512-MY9W41IOWxxk31o+YvFCNyNzdkc9M20NoZK5vq6jkv4I/uh2zkWcfudj0Q1fovjUQJrNewS9NMzeTtqPf+n5EA==}
+
+  refractor@5.0.0:
+    resolution: {integrity: sha512-QXOrHQF5jOpjjLfiNk5GFnWhRXvxjUVnlFxkeDmewR5sXkr3iM46Zo+CnRR8B+MDVqkULW4EcLVcRBNOPXHosw==}
 
   regenerate-unicode-properties@10.2.2:
     resolution: {integrity: sha512-m03P+zhBeQd1RGnYxrGyDAPpWX/epKirLrp8e3qevZdVkKtnCrjjWczIbYc8+xd6vcTStVlqfycTx1KR4LOr0g==}
@@ -9059,6 +9266,9 @@ packages:
   space-separated-tokens@1.1.5:
     resolution: {integrity: sha512-q/JSVd1Lptzhf5bkYm4ob4iWPjx0KiRe3sRFBNrVqbJkFaBm5vbbowy1mymoPNLRa52+oadOhJ+K49wsSeSjTA==}
 
+  space-separated-tokens@2.0.2:
+    resolution: {integrity: sha512-PEGlAwrG8yXGXRjW32fGbg66JAlOAwbObuqVoJpv/mRgoWDQfgH1wDPvtzWyUSNAXBGSk8h755YDbbcEy3SH2Q==}
+
   spark-md5@2.0.2:
     resolution: {integrity: sha512-9WfT+FYBEvlrOOBEs484/zmbtSX4BlGjzXih1qIEWA1yhHbcqgcMHkiwXoWk2Sq1aJjLpcs6ZKV7JxrDNjIlNg==}
 
@@ -9221,8 +9431,15 @@ packages:
   swagger-client@3.37.1:
     resolution: {integrity: sha512-WCRU7wfyqTyB0vOpVK1vHFm4aCqnmqcXycDcWVmHa784Nd4cABaQeSITtjWMOnjJoIkTqG8TLArYn4SAv+wj2w==}
 
+  swagger-client@3.39.0:
+    resolution: {integrity: sha512-EDpBphskzOCzczUrucX3/FVb7k5gch1GSzB+MTBcdGY3Zew2XKs0ryPPw1J2l1hioojwwKUZXtEg31axbnQvpQ==}
+    engines: {node: '>=22'}
+
   swagger-ui@5.21.0:
     resolution: {integrity: sha512-zAY5P5nIWiYOuO0SWQk1x8/kL+pmarijO+oviWOp+SerfMpeokujYk6HknwEoeYNi4CtpO+kBj6Vm+8aswCBIA==}
+
+  swagger-ui@5.34.1:
+    resolution: {integrity: sha512-09s+e8mNVqqSv12XzL1dzUX/Rdn+KY8Skto7fQ8kjZGp8owwKWkxWe4f/ES8pQPpbWw8HkmkBoHWOSg+OZz5Kg==}
 
   symbol-observable@4.0.0:
     resolution: {integrity: sha512-b19dMThMV4HVFynSAM1++gBHAbk2Tc/osgLIBZMKsyqh34jb2e8Os7T6ZW/Bt3pJFdBTd2JwAnAAEQV7rSNvcQ==}
@@ -11556,7 +11773,7 @@ snapshots:
 
   '@discoveryjs/json-ext@0.6.3': {}
 
-  '@epistola.app/valtimo-plugin@file:frontend/plugin(63a279beda423dd9cbad8805244e383e)':
+  '@epistola.app/valtimo-plugin@file:frontend/plugin(abded992775dffa32d8a6ee35ed84057)':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -11566,11 +11783,11 @@ snapshots:
       '@angular/router': 19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@19.2.25(@angular/animations@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2)
       '@formio/angular': 7.0.0(c150ca8a43035968948abde96c21d2f9)
       '@ngx-translate/core': 16.0.4(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
-      '@valtimo/components': 13.54.0(03a40c4340cfb08b0d641fb3d4f3ed55)
-      '@valtimo/plugin': 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
-      '@valtimo/process-link': 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
-      '@valtimo/security': 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
-      '@valtimo/shared': 13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+      '@valtimo/components': 13.55.1(03a40c4340cfb08b0d641fb3d4f3ed55)
+      '@valtimo/plugin': 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+      '@valtimo/process-link': 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+      '@valtimo/security': 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+      '@valtimo/shared': 13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       carbon-components-angular: 5.57.6(@carbon/styles@1.80.0(sass@1.98.0))
       formiojs: 4.19.5(encoding@0.1.13)
       jsonata: 2.2.2
@@ -13157,6 +13374,15 @@ snapshots:
     dependencies:
       acorn: 8.16.0
 
+  '@swagger-api/apidom-ast@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-error': 1.14.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+      unraw: 3.0.0
+
   '@swagger-api/apidom-ast@1.8.0':
     dependencies:
       '@babel/runtime-corejs3': 7.29.2
@@ -13165,6 +13391,18 @@ snapshots:
       ramda: 0.30.1
       ramda-adjunct: 5.1.0(ramda@0.30.1)
       unraw: 3.0.0
+
+  '@swagger-api/apidom-core@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-ast': 1.14.0
+      '@swagger-api/apidom-error': 1.14.0
+      '@types/ramda': 0.30.2
+      minim: 0.23.8
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+      short-unique-id: 5.3.2
+      ts-mixer: 6.0.4
 
   '@swagger-api/apidom-core@1.8.0':
     dependencies:
@@ -13178,9 +13416,20 @@ snapshots:
       short-unique-id: 5.3.2
       ts-mixer: 6.0.4
 
+  '@swagger-api/apidom-error@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+
   '@swagger-api/apidom-error@1.8.0':
     dependencies:
       '@babel/runtime-corejs3': 7.29.2
+
+  '@swagger-api/apidom-json-pointer@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-error': 1.14.0
+      '@swaggerexpert/json-pointer': 2.10.2
 
   '@swagger-api/apidom-json-pointer@1.8.0':
     dependencies:
@@ -13189,12 +13438,45 @@ snapshots:
       '@swagger-api/apidom-error': 1.8.0
       '@swaggerexpert/json-pointer': 2.10.2
 
+  '@swagger-api/apidom-ns-a2a-1@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+      ts-mixer: 6.0.4
+    optional: true
+
+  '@swagger-api/apidom-ns-api-design-systems@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-error': 1.14.0
+      '@swagger-api/apidom-ns-openapi-3-1': 1.14.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+      ts-mixer: 6.0.4
+    optional: true
+
   '@swagger-api/apidom-ns-api-design-systems@1.8.0':
     dependencies:
       '@babel/runtime-corejs3': 7.29.2
       '@swagger-api/apidom-core': 1.8.0
       '@swagger-api/apidom-error': 1.8.0
       '@swagger-api/apidom-ns-openapi-3-1': 1.8.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+      ts-mixer: 6.0.4
+    optional: true
+
+  '@swagger-api/apidom-ns-arazzo-1@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-ns-json-schema-2020-12': 1.14.0
       '@types/ramda': 0.30.2
       ramda: 0.30.1
       ramda-adjunct: 5.1.0(ramda@0.30.1)
@@ -13212,11 +13494,33 @@ snapshots:
       ts-mixer: 6.0.4
     optional: true
 
+  '@swagger-api/apidom-ns-asyncapi-2@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-ns-json-schema-draft-7': 1.14.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+      ts-mixer: 6.0.4
+    optional: true
+
   '@swagger-api/apidom-ns-asyncapi-2@1.8.0':
     dependencies:
       '@babel/runtime-corejs3': 7.29.2
       '@swagger-api/apidom-core': 1.8.0
       '@swagger-api/apidom-ns-json-schema-draft-7': 1.8.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+      ts-mixer: 6.0.4
+    optional: true
+
+  '@swagger-api/apidom-ns-asyncapi-3@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-ns-asyncapi-2': 1.14.0
       '@types/ramda': 0.30.2
       ramda: 0.30.1
       ramda-adjunct: 5.1.0(ramda@0.30.1)
@@ -13234,12 +13538,34 @@ snapshots:
       ts-mixer: 6.0.4
     optional: true
 
+  '@swagger-api/apidom-ns-json-schema-2019-09@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-error': 1.14.0
+      '@swagger-api/apidom-ns-json-schema-draft-7': 1.14.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+      ts-mixer: 6.0.4
+
   '@swagger-api/apidom-ns-json-schema-2019-09@1.8.0':
     dependencies:
       '@babel/runtime-corejs3': 7.29.2
       '@swagger-api/apidom-core': 1.8.0
       '@swagger-api/apidom-error': 1.8.0
       '@swagger-api/apidom-ns-json-schema-draft-7': 1.8.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+      ts-mixer: 6.0.4
+
+  '@swagger-api/apidom-ns-json-schema-2020-12@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-error': 1.14.0
+      '@swagger-api/apidom-ns-json-schema-2019-09': 1.14.0
       '@types/ramda': 0.30.2
       ramda: 0.30.1
       ramda-adjunct: 5.1.0(ramda@0.30.1)
@@ -13256,11 +13582,32 @@ snapshots:
       ramda-adjunct: 5.1.0(ramda@0.30.1)
       ts-mixer: 6.0.4
 
+  '@swagger-api/apidom-ns-json-schema-draft-4@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-ast': 1.14.0
+      '@swagger-api/apidom-core': 1.14.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+      ts-mixer: 6.0.4
+
   '@swagger-api/apidom-ns-json-schema-draft-4@1.8.0':
     dependencies:
       '@babel/runtime-corejs3': 7.29.2
       '@swagger-api/apidom-ast': 1.8.0
       '@swagger-api/apidom-core': 1.8.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+      ts-mixer: 6.0.4
+
+  '@swagger-api/apidom-ns-json-schema-draft-6@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-error': 1.14.0
+      '@swagger-api/apidom-ns-json-schema-draft-4': 1.14.0
       '@types/ramda': 0.30.2
       ramda: 0.30.1
       ramda-adjunct: 5.1.0(ramda@0.30.1)
@@ -13277,6 +13624,17 @@ snapshots:
       ramda-adjunct: 5.1.0(ramda@0.30.1)
       ts-mixer: 6.0.4
 
+  '@swagger-api/apidom-ns-json-schema-draft-7@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-error': 1.14.0
+      '@swagger-api/apidom-ns-json-schema-draft-6': 1.14.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+      ts-mixer: 6.0.4
+
   '@swagger-api/apidom-ns-json-schema-draft-7@1.8.0':
     dependencies:
       '@babel/runtime-corejs3': 7.29.2
@@ -13287,6 +13645,18 @@ snapshots:
       ramda: 0.30.1
       ramda-adjunct: 5.1.0(ramda@0.30.1)
       ts-mixer: 6.0.4
+
+  '@swagger-api/apidom-ns-openapi-2@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-error': 1.14.0
+      '@swagger-api/apidom-ns-json-schema-draft-4': 1.14.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+      ts-mixer: 6.0.4
+    optional: true
 
   '@swagger-api/apidom-ns-openapi-2@1.8.0':
     dependencies:
@@ -13300,12 +13670,36 @@ snapshots:
       ts-mixer: 6.0.4
     optional: true
 
+  '@swagger-api/apidom-ns-openapi-3-0@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-error': 1.14.0
+      '@swagger-api/apidom-ns-json-schema-draft-4': 1.14.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+      ts-mixer: 6.0.4
+
   '@swagger-api/apidom-ns-openapi-3-0@1.8.0':
     dependencies:
       '@babel/runtime-corejs3': 7.29.2
       '@swagger-api/apidom-core': 1.8.0
       '@swagger-api/apidom-error': 1.8.0
       '@swagger-api/apidom-ns-json-schema-draft-4': 1.8.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+      ts-mixer: 6.0.4
+
+  '@swagger-api/apidom-ns-openapi-3-1@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-ast': 1.14.0
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-json-pointer': 1.14.0
+      '@swagger-api/apidom-ns-json-schema-2020-12': 1.14.0
+      '@swagger-api/apidom-ns-openapi-3-0': 1.14.0
       '@types/ramda': 0.30.2
       ramda: 0.30.1
       ramda-adjunct: 5.1.0(ramda@0.30.1)
@@ -13319,6 +13713,20 @@ snapshots:
       '@swagger-api/apidom-json-pointer': 1.8.0
       '@swagger-api/apidom-ns-json-schema-2020-12': 1.8.0
       '@swagger-api/apidom-ns-openapi-3-0': 1.8.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+      ts-mixer: 6.0.4
+
+  '@swagger-api/apidom-ns-openapi-3-2@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-ast': 1.14.0
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-json-pointer': 1.14.0
+      '@swagger-api/apidom-ns-json-schema-2020-12': 1.14.0
+      '@swagger-api/apidom-ns-openapi-3-0': 1.14.0
+      '@swagger-api/apidom-ns-openapi-3-1': 1.14.0
       '@types/ramda': 0.30.2
       ramda: 0.30.1
       ramda-adjunct: 5.1.0(ramda@0.30.1)
@@ -13338,12 +13746,56 @@ snapshots:
       ramda-adjunct: 5.1.0(ramda@0.30.1)
       ts-mixer: 6.0.4
 
+  '@swagger-api/apidom-parser-adapter-a2a-json-1@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-ns-a2a-1': 1.14.0
+      '@swagger-api/apidom-parser-adapter-json': 1.14.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+    optional: true
+
+  '@swagger-api/apidom-parser-adapter-a2a-yaml-1@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-ns-a2a-1': 1.14.0
+      '@swagger-api/apidom-parser-adapter-yaml-1-2': 1.14.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+    optional: true
+
+  '@swagger-api/apidom-parser-adapter-api-design-systems-json@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-ns-api-design-systems': 1.14.0
+      '@swagger-api/apidom-parser-adapter-json': 1.14.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+    optional: true
+
   '@swagger-api/apidom-parser-adapter-api-design-systems-json@1.8.0':
     dependencies:
       '@babel/runtime-corejs3': 7.29.2
       '@swagger-api/apidom-core': 1.8.0
       '@swagger-api/apidom-ns-api-design-systems': 1.8.0
       '@swagger-api/apidom-parser-adapter-json': 1.8.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+    optional: true
+
+  '@swagger-api/apidom-parser-adapter-api-design-systems-yaml@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-ns-api-design-systems': 1.14.0
+      '@swagger-api/apidom-parser-adapter-yaml-1-2': 1.14.0
       '@types/ramda': 0.30.2
       ramda: 0.30.1
       ramda-adjunct: 5.1.0(ramda@0.30.1)
@@ -13360,12 +13812,34 @@ snapshots:
       ramda-adjunct: 5.1.0(ramda@0.30.1)
     optional: true
 
+  '@swagger-api/apidom-parser-adapter-arazzo-json-1@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-ns-arazzo-1': 1.14.0
+      '@swagger-api/apidom-parser-adapter-json': 1.14.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+    optional: true
+
   '@swagger-api/apidom-parser-adapter-arazzo-json-1@1.8.0':
     dependencies:
       '@babel/runtime-corejs3': 7.29.2
       '@swagger-api/apidom-core': 1.8.0
       '@swagger-api/apidom-ns-arazzo-1': 1.8.0
       '@swagger-api/apidom-parser-adapter-json': 1.8.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+    optional: true
+
+  '@swagger-api/apidom-parser-adapter-arazzo-yaml-1@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-ns-arazzo-1': 1.14.0
+      '@swagger-api/apidom-parser-adapter-yaml-1-2': 1.14.0
       '@types/ramda': 0.30.2
       ramda: 0.30.1
       ramda-adjunct: 5.1.0(ramda@0.30.1)
@@ -13382,12 +13856,34 @@ snapshots:
       ramda-adjunct: 5.1.0(ramda@0.30.1)
     optional: true
 
+  '@swagger-api/apidom-parser-adapter-asyncapi-json-2@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-ns-asyncapi-2': 1.14.0
+      '@swagger-api/apidom-parser-adapter-json': 1.14.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+    optional: true
+
   '@swagger-api/apidom-parser-adapter-asyncapi-json-2@1.8.0':
     dependencies:
       '@babel/runtime-corejs3': 7.29.2
       '@swagger-api/apidom-core': 1.8.0
       '@swagger-api/apidom-ns-asyncapi-2': 1.8.0
       '@swagger-api/apidom-parser-adapter-json': 1.8.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+    optional: true
+
+  '@swagger-api/apidom-parser-adapter-asyncapi-json-3@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-ns-asyncapi-3': 1.14.0
+      '@swagger-api/apidom-parser-adapter-json': 1.14.0
       '@types/ramda': 0.30.2
       ramda: 0.30.1
       ramda-adjunct: 5.1.0(ramda@0.30.1)
@@ -13404,12 +13900,34 @@ snapshots:
       ramda-adjunct: 5.1.0(ramda@0.30.1)
     optional: true
 
+  '@swagger-api/apidom-parser-adapter-asyncapi-yaml-2@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-ns-asyncapi-2': 1.14.0
+      '@swagger-api/apidom-parser-adapter-yaml-1-2': 1.14.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+    optional: true
+
   '@swagger-api/apidom-parser-adapter-asyncapi-yaml-2@1.8.0':
     dependencies:
       '@babel/runtime-corejs3': 7.29.2
       '@swagger-api/apidom-core': 1.8.0
       '@swagger-api/apidom-ns-asyncapi-2': 1.8.0
       '@swagger-api/apidom-parser-adapter-yaml-1-2': 1.8.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+    optional: true
+
+  '@swagger-api/apidom-parser-adapter-asyncapi-yaml-3@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-ns-asyncapi-3': 1.14.0
+      '@swagger-api/apidom-parser-adapter-yaml-1-2': 1.14.0
       '@types/ramda': 0.30.2
       ramda: 0.30.1
       ramda-adjunct: 5.1.0(ramda@0.30.1)
@@ -13426,6 +13944,42 @@ snapshots:
       ramda-adjunct: 5.1.0(ramda@0.30.1)
     optional: true
 
+  '@swagger-api/apidom-parser-adapter-json-schema-json-2020-12@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-ns-json-schema-2020-12': 1.14.0
+      '@swagger-api/apidom-parser-adapter-json': 1.14.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+    optional: true
+
+  '@swagger-api/apidom-parser-adapter-json-schema-yaml-2020-12@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-ns-json-schema-2020-12': 1.14.0
+      '@swagger-api/apidom-parser-adapter-yaml-1-2': 1.14.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+    optional: true
+
+  '@swagger-api/apidom-parser-adapter-json@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-ast': 1.14.0
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-error': 1.14.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+      tree-sitter: 0.21.1
+      tree-sitter-json: 0.24.8(tree-sitter@0.21.1)
+      web-tree-sitter: 0.24.5
+    optional: true
+
   '@swagger-api/apidom-parser-adapter-json@1.8.0':
     dependencies:
       '@babel/runtime-corejs3': 7.29.2
@@ -13440,12 +13994,34 @@ snapshots:
       web-tree-sitter: 0.24.5
     optional: true
 
+  '@swagger-api/apidom-parser-adapter-openapi-json-2@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-ns-openapi-2': 1.14.0
+      '@swagger-api/apidom-parser-adapter-json': 1.14.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+    optional: true
+
   '@swagger-api/apidom-parser-adapter-openapi-json-2@1.8.0':
     dependencies:
       '@babel/runtime-corejs3': 7.29.2
       '@swagger-api/apidom-core': 1.8.0
       '@swagger-api/apidom-ns-openapi-2': 1.8.0
       '@swagger-api/apidom-parser-adapter-json': 1.8.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+    optional: true
+
+  '@swagger-api/apidom-parser-adapter-openapi-json-3-0@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-ns-openapi-3-0': 1.14.0
+      '@swagger-api/apidom-parser-adapter-json': 1.14.0
       '@types/ramda': 0.30.2
       ramda: 0.30.1
       ramda-adjunct: 5.1.0(ramda@0.30.1)
@@ -13462,12 +14038,34 @@ snapshots:
       ramda-adjunct: 5.1.0(ramda@0.30.1)
     optional: true
 
+  '@swagger-api/apidom-parser-adapter-openapi-json-3-1@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-ns-openapi-3-1': 1.14.0
+      '@swagger-api/apidom-parser-adapter-json': 1.14.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+    optional: true
+
   '@swagger-api/apidom-parser-adapter-openapi-json-3-1@1.8.0':
     dependencies:
       '@babel/runtime-corejs3': 7.29.2
       '@swagger-api/apidom-core': 1.8.0
       '@swagger-api/apidom-ns-openapi-3-1': 1.8.0
       '@swagger-api/apidom-parser-adapter-json': 1.8.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+    optional: true
+
+  '@swagger-api/apidom-parser-adapter-openapi-json-3-2@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-ns-openapi-3-2': 1.14.0
+      '@swagger-api/apidom-parser-adapter-json': 1.14.0
       '@types/ramda': 0.30.2
       ramda: 0.30.1
       ramda-adjunct: 5.1.0(ramda@0.30.1)
@@ -13484,12 +14082,34 @@ snapshots:
       ramda-adjunct: 5.1.0(ramda@0.30.1)
     optional: true
 
+  '@swagger-api/apidom-parser-adapter-openapi-yaml-2@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-ns-openapi-2': 1.14.0
+      '@swagger-api/apidom-parser-adapter-yaml-1-2': 1.14.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+    optional: true
+
   '@swagger-api/apidom-parser-adapter-openapi-yaml-2@1.8.0':
     dependencies:
       '@babel/runtime-corejs3': 7.29.2
       '@swagger-api/apidom-core': 1.8.0
       '@swagger-api/apidom-ns-openapi-2': 1.8.0
       '@swagger-api/apidom-parser-adapter-yaml-1-2': 1.8.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+    optional: true
+
+  '@swagger-api/apidom-parser-adapter-openapi-yaml-3-0@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-ns-openapi-3-0': 1.14.0
+      '@swagger-api/apidom-parser-adapter-yaml-1-2': 1.14.0
       '@types/ramda': 0.30.2
       ramda: 0.30.1
       ramda-adjunct: 5.1.0(ramda@0.30.1)
@@ -13506,12 +14126,34 @@ snapshots:
       ramda-adjunct: 5.1.0(ramda@0.30.1)
     optional: true
 
+  '@swagger-api/apidom-parser-adapter-openapi-yaml-3-1@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-ns-openapi-3-1': 1.14.0
+      '@swagger-api/apidom-parser-adapter-yaml-1-2': 1.14.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+    optional: true
+
   '@swagger-api/apidom-parser-adapter-openapi-yaml-3-1@1.8.0':
     dependencies:
       '@babel/runtime-corejs3': 7.29.2
       '@swagger-api/apidom-core': 1.8.0
       '@swagger-api/apidom-ns-openapi-3-1': 1.8.0
       '@swagger-api/apidom-parser-adapter-yaml-1-2': 1.8.0
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+    optional: true
+
+  '@swagger-api/apidom-parser-adapter-openapi-yaml-3-2@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-ns-openapi-3-2': 1.14.0
+      '@swagger-api/apidom-parser-adapter-yaml-1-2': 1.14.0
       '@types/ramda': 0.30.2
       ramda: 0.30.1
       ramda-adjunct: 5.1.0(ramda@0.30.1)
@@ -13528,6 +14170,20 @@ snapshots:
       ramda-adjunct: 5.1.0(ramda@0.30.1)
     optional: true
 
+  '@swagger-api/apidom-parser-adapter-yaml-1-2@1.14.0':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-ast': 1.14.0
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-error': 1.14.0
+      '@tree-sitter-grammars/tree-sitter-yaml': 0.7.1(tree-sitter@0.22.4)
+      '@types/ramda': 0.30.2
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+      tree-sitter: 0.22.4
+      web-tree-sitter: 0.24.5
+    optional: true
+
   '@swagger-api/apidom-parser-adapter-yaml-1-2@1.8.0':
     dependencies:
       '@babel/runtime-corejs3': 7.29.2
@@ -13541,6 +14197,52 @@ snapshots:
       tree-sitter: 0.22.4
       web-tree-sitter: 0.24.5
     optional: true
+
+  '@swagger-api/apidom-reference@1.14.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)':
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-error': 1.14.0
+      '@types/ramda': 0.30.2
+      axios: 1.21.1(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+      minimatch: 10.2.6
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+    optionalDependencies:
+      '@swagger-api/apidom-json-pointer': 1.14.0
+      '@swagger-api/apidom-ns-a2a-1': 1.14.0
+      '@swagger-api/apidom-ns-arazzo-1': 1.14.0
+      '@swagger-api/apidom-ns-asyncapi-2': 1.14.0
+      '@swagger-api/apidom-ns-json-schema-2020-12': 1.14.0
+      '@swagger-api/apidom-ns-openapi-2': 1.14.0
+      '@swagger-api/apidom-ns-openapi-3-0': 1.14.0
+      '@swagger-api/apidom-ns-openapi-3-1': 1.14.0
+      '@swagger-api/apidom-ns-openapi-3-2': 1.14.0
+      '@swagger-api/apidom-parser-adapter-a2a-json-1': 1.14.0
+      '@swagger-api/apidom-parser-adapter-a2a-yaml-1': 1.14.0
+      '@swagger-api/apidom-parser-adapter-api-design-systems-json': 1.14.0
+      '@swagger-api/apidom-parser-adapter-api-design-systems-yaml': 1.14.0
+      '@swagger-api/apidom-parser-adapter-arazzo-json-1': 1.14.0
+      '@swagger-api/apidom-parser-adapter-arazzo-yaml-1': 1.14.0
+      '@swagger-api/apidom-parser-adapter-asyncapi-json-2': 1.14.0
+      '@swagger-api/apidom-parser-adapter-asyncapi-json-3': 1.14.0
+      '@swagger-api/apidom-parser-adapter-asyncapi-yaml-2': 1.14.0
+      '@swagger-api/apidom-parser-adapter-asyncapi-yaml-3': 1.14.0
+      '@swagger-api/apidom-parser-adapter-json': 1.14.0
+      '@swagger-api/apidom-parser-adapter-json-schema-json-2020-12': 1.14.0
+      '@swagger-api/apidom-parser-adapter-json-schema-yaml-2020-12': 1.14.0
+      '@swagger-api/apidom-parser-adapter-openapi-json-2': 1.14.0
+      '@swagger-api/apidom-parser-adapter-openapi-json-3-0': 1.14.0
+      '@swagger-api/apidom-parser-adapter-openapi-json-3-1': 1.14.0
+      '@swagger-api/apidom-parser-adapter-openapi-json-3-2': 1.14.0
+      '@swagger-api/apidom-parser-adapter-openapi-yaml-2': 1.14.0
+      '@swagger-api/apidom-parser-adapter-openapi-yaml-3-0': 1.14.0
+      '@swagger-api/apidom-parser-adapter-openapi-yaml-3-1': 1.14.0
+      '@swagger-api/apidom-parser-adapter-openapi-yaml-3-2': 1.14.0
+      '@swagger-api/apidom-parser-adapter-yaml-1-2': 1.14.0
+    transitivePeerDependencies:
+      - debug
+      - supports-color
 
   '@swagger-api/apidom-reference@1.8.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)':
     dependencies:
@@ -13591,6 +14293,14 @@ snapshots:
       apg-lite: 1.0.5
 
   '@swc/helpers@0.2.14': {}
+
+  '@tanstack/react-virtual@3.14.10(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      '@tanstack/virtual-core': 3.17.8
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+
+  '@tanstack/virtual-core@3.17.8': {}
 
   '@tree-sitter-grammars/tree-sitter-yaml@0.7.1(tree-sitter@0.22.4)':
     dependencies:
@@ -13807,6 +14517,10 @@ snapshots:
     dependencies:
       '@types/unist': 2.0.11
 
+  '@types/hast@3.0.5':
+    dependencies:
+      '@types/unist': 2.0.11
+
   '@types/http-errors@2.0.5': {}
 
   '@types/http-proxy@1.17.17':
@@ -13857,6 +14571,8 @@ snapshots:
   '@types/node@22.20.5':
     dependencies:
       undici-types: 6.21.0
+
+  '@types/prismjs@1.26.6': {}
 
   '@types/qs@6.15.0': {}
 
@@ -14008,39 +14724,39 @@ snapshots:
   '@unrs/resolver-binding-win32-x64-msvc@1.13.0':
     optional: true
 
-  '@valtimo/access-control-management@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/access-control-management@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/access-control@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/access-control@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       jwt-decode: 4.0.0
       tslib: 2.8.1
 
-  '@valtimo/account@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/account@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       moment: 2.31.0
       tslib: 2.8.1
 
-  '@valtimo/analyse@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/analyse@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/bootstrap@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/bootstrap@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/building-block-management@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@typescript-eslint/types@8.57.2)':
+  '@valtimo/building-block-management@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@typescript-eslint/types@8.57.2)':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -14050,19 +14766,19 @@ snapshots:
     transitivePeerDependencies:
       - '@typescript-eslint/types'
 
-  '@valtimo/case-management@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/case-management@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/case-migration@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/case-migration@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/case@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)':
+  '@valtimo/case@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -14077,13 +14793,13 @@ snapshots:
     transitivePeerDependencies:
       - rxjs
 
-  '@valtimo/choice-field@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/choice-field@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/components@13.54.0(03a40c4340cfb08b0d641fb3d4f3ed55)':
+  '@valtimo/components@13.55.1(03a40c4340cfb08b0d641fb3d4f3ed55)':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -14135,13 +14851,13 @@ snapshots:
       - sass
       - zone.js
 
-  '@valtimo/dashboard-management@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/dashboard-management@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/dashboard@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/dashboard@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -14157,7 +14873,7 @@ snapshots:
       muuri: 0.9.5
       tslib: 2.8.1
 
-  '@valtimo/decision@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/decision@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -14165,31 +14881,31 @@ snapshots:
       dmn-js: 17.2.0
       tslib: 2.8.1
 
-  '@valtimo/document@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/document@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/form-flow-management@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/form-flow-management@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/form-management@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/form-management@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/form@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/form@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/keycloak@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/router@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@19.2.25(@angular/animations@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2))':
+  '@valtimo/keycloak@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/router@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@19.2.25(@angular/animations@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -14200,7 +14916,7 @@ snapshots:
     transitivePeerDependencies:
       - '@angular/router'
 
-  '@valtimo/layout@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/layout@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -14218,20 +14934,20 @@ snapshots:
       select2: 4.1.0-rc.0
       tslib: 2.8.1
 
-  '@valtimo/logging@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/logging@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/migration@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/migration@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       bpmn-js: 18.6.1
       tslib: 2.8.1
 
-  '@valtimo/milestone@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/forms@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@19.2.25(@angular/animations@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2))':
+  '@valtimo/milestone@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/forms@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@19.2.25(@angular/animations@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -14240,37 +14956,37 @@ snapshots:
     transitivePeerDependencies:
       - '@angular/forms'
 
-  '@valtimo/object-management@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/object-management@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/object@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/object@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/plugin-management@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/plugin-management@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/plugin@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/plugin@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/process-link@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/process-link@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/process-management@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(diagram-js@15.3.0)(zeebe-bpmn-moddle@1.12.0)':
+  '@valtimo/process-management@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(diagram-js@15.3.0)(zeebe-bpmn-moddle@1.12.0)':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -14284,7 +15000,7 @@ snapshots:
       - diagram-js
       - zeebe-bpmn-moddle
 
-  '@valtimo/process@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/process@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -14294,13 +15010,13 @@ snapshots:
       moment: 2.31.0
       tslib: 2.8.1
 
-  '@valtimo/resource@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/resource@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/security@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/security@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -14308,7 +15024,7 @@ snapshots:
       moment: 2.31.0
       tslib: 2.8.1
 
-  '@valtimo/shared@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/shared@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -14316,32 +15032,32 @@ snapshots:
       deepmerge-ts: 8.0.2
       tslib: 2.8.1
 
-  '@valtimo/sse@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/sse@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/swagger@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)':
+  '@valtimo/swagger@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       immutable: 4.3.9
-      swagger-ui: 5.21.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+      swagger-ui: 5.34.1(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
       tslib: 2.8.1
     transitivePeerDependencies:
       - '@types/react'
       - debug
       - supports-color
 
-  '@valtimo/task-management@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/task-management@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       lodash: 4.18.1
       tslib: 2.8.1
 
-  '@valtimo/task@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/task@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -14349,7 +15065,7 @@ snapshots:
       moment: 2.31.0
       tslib: 2.8.1
 
-  '@valtimo/teams@13.54.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/teams@13.55.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -15021,9 +15737,15 @@ snapshots:
 
   character-entities-legacy@1.1.4: {}
 
+  character-entities-legacy@3.0.0: {}
+
   character-entities@1.2.4: {}
 
+  character-entities@2.0.2: {}
+
   character-reference-invalid@1.1.4: {}
+
+  character-reference-invalid@2.0.1: {}
 
   chardet@2.1.1: {}
 
@@ -15161,6 +15883,8 @@ snapshots:
       delayed-stream: 1.0.0
 
   comma-separated-tokens@1.0.8: {}
+
+  comma-separated-tokens@2.0.3: {}
 
   commander@13.1.0: {}
 
@@ -15585,6 +16309,10 @@ snapshots:
   decamelize@1.2.0: {}
 
   decimal.js@10.6.0: {}
+
+  decode-named-character-reference@1.3.0:
+    dependencies:
+      character-entities: 2.0.2
 
   decompress-response@6.0.0:
     dependencies:
@@ -16888,6 +17616,10 @@ snapshots:
 
   hast-util-parse-selector@2.2.5: {}
 
+  hast-util-parse-selector@4.0.0:
+    dependencies:
+      '@types/hast': 3.0.5
+
   hastscript@6.0.0:
     dependencies:
       '@types/hast': 2.3.10
@@ -16895,6 +17627,14 @@ snapshots:
       hast-util-parse-selector: 2.2.5
       property-information: 5.6.0
       space-separated-tokens: 1.1.5
+
+  hastscript@9.0.3:
+    dependencies:
+      '@types/hast': 3.0.5
+      comma-separated-tokens: 2.0.3
+      hast-util-parse-selector: 4.0.0
+      property-information: 7.2.0
+      space-separated-tokens: 2.0.2
 
   heatmap.js-fixed@2.0.2: {}
 
@@ -17120,10 +17860,17 @@ snapshots:
 
   is-alphabetical@1.0.4: {}
 
+  is-alphabetical@2.0.1: {}
+
   is-alphanumerical@1.0.4:
     dependencies:
       is-alphabetical: 1.0.4
       is-decimal: 1.0.4
+
+  is-alphanumerical@2.0.1:
+    dependencies:
+      is-alphabetical: 2.0.1
+      is-decimal: 2.0.1
 
   is-array-buffer@3.0.5:
     dependencies:
@@ -17177,6 +17924,8 @@ snapshots:
 
   is-decimal@1.0.4: {}
 
+  is-decimal@2.0.1: {}
+
   is-docker@3.0.0: {}
 
   is-extglob@2.1.1: {}
@@ -17208,6 +17957,8 @@ snapshots:
       is-extglob: 2.1.1
 
   is-hexadecimal@1.0.4: {}
+
+  is-hexadecimal@2.0.1: {}
 
   is-inside-container@1.0.0:
     dependencies:
@@ -18495,6 +19246,8 @@ snapshots:
 
   neotraverse@0.6.18: {}
 
+  neotraverse@1.0.1: {}
+
   ng-multiselect-dropdown@1.0.0-beta.19(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)):
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
@@ -18986,6 +19739,16 @@ snapshots:
       is-decimal: 1.0.4
       is-hexadecimal: 1.0.4
 
+  parse-entities@4.0.2:
+    dependencies:
+      '@types/unist': 2.0.11
+      character-entities-legacy: 3.0.0
+      character-reference-invalid: 2.0.1
+      decode-named-character-reference: 1.3.0
+      is-alphanumerical: 2.0.1
+      is-decimal: 2.0.1
+      is-hexadecimal: 2.0.1
+
   parse-headers@2.0.6: {}
 
   parse-json@4.0.0:
@@ -19223,6 +19986,8 @@ snapshots:
     dependencies:
       xtend: 4.0.2
 
+  property-information@7.2.0: {}
+
   protocol-buffers-schema@3.6.1: {}
 
   proxy-addr@2.0.8:
@@ -19322,6 +20087,12 @@ snapshots:
       prop-types: 15.8.1
       react: 18.3.1
 
+  react-copy-to-clipboard@5.1.1(react@18.3.1):
+    dependencies:
+      copy-to-clipboard: 3.3.3
+      prop-types: 15.8.1
+      react: 18.3.1
+
   react-debounce-input@3.3.0(react@18.3.1):
     dependencies:
       lodash.debounce: 4.0.8
@@ -19363,6 +20134,14 @@ snapshots:
     optionalDependencies:
       redux: 5.0.1
 
+  react-redux@9.3.1(react@18.3.1)(redux@5.0.1):
+    dependencies:
+      '@types/use-sync-external-store': 0.0.6
+      react: 18.3.1
+      use-sync-external-store: 1.6.0(react@18.3.1)
+    optionalDependencies:
+      redux: 5.0.1
+
   react-syntax-highlighter@15.6.6(react@18.3.1):
     dependencies:
       '@babel/runtime': 7.29.2
@@ -19372,6 +20151,16 @@ snapshots:
       prismjs: 1.30.0
       react: 18.3.1
       refractor: 3.6.0
+
+  react-syntax-highlighter@16.1.2(react@18.3.1):
+    dependencies:
+      '@babel/runtime': 7.29.2
+      highlight.js: 10.7.3
+      highlightjs-vue: 1.0.0
+      lowlight: 1.20.0
+      prismjs: 1.30.0
+      react: 18.3.1
+      refractor: 5.0.0
 
   react@18.3.1:
     dependencies:
@@ -19427,6 +20216,13 @@ snapshots:
       hastscript: 6.0.0
       parse-entities: 2.0.0
       prismjs: 1.30.0
+
+  refractor@5.0.0:
+    dependencies:
+      '@types/hast': 3.0.5
+      '@types/prismjs': 1.26.6
+      hastscript: 9.0.3
+      parse-entities: 4.0.2
 
   regenerate-unicode-properties@10.2.2:
     dependencies:
@@ -20025,6 +20821,8 @@ snapshots:
 
   space-separated-tokens@1.1.5: {}
 
+  space-separated-tokens@2.0.2: {}
+
   spark-md5@2.0.2: {}
 
   spdx-correct@3.2.0:
@@ -20276,6 +21074,55 @@ snapshots:
       - debug
       - supports-color
 
+  swagger-client@3.39.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1):
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@scarf/scarf': 1.4.0
+      '@swagger-api/apidom-core': 1.14.0
+      '@swagger-api/apidom-error': 1.14.0
+      '@swagger-api/apidom-json-pointer': 1.14.0
+      '@swagger-api/apidom-ns-json-schema-2020-12': 1.14.0
+      '@swagger-api/apidom-ns-openapi-3-1': 1.14.0
+      '@swagger-api/apidom-ns-openapi-3-2': 1.14.0
+      '@swagger-api/apidom-reference': 1.14.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+      '@swaggerexpert/cookie': 2.0.2
+      deepmerge: 4.3.1
+      fast-json-patch: 3.1.1
+      js-yaml: 4.3.2
+      neotraverse: 1.0.1
+      node-abort-controller: 3.1.1
+      openapi-path-templating: 2.2.1
+      openapi-server-url-templating: 1.3.0
+      ramda: 0.30.1
+      ramda-adjunct: 5.1.0(ramda@0.30.1)
+    optionalDependencies:
+      '@swagger-api/apidom-ns-asyncapi-2': 1.14.0
+      '@swagger-api/apidom-ns-asyncapi-3': 1.14.0
+      '@swagger-api/apidom-ns-openapi-2': 1.14.0
+      '@swagger-api/apidom-parser-adapter-api-design-systems-json': 1.14.0
+      '@swagger-api/apidom-parser-adapter-api-design-systems-yaml': 1.14.0
+      '@swagger-api/apidom-parser-adapter-arazzo-json-1': 1.14.0
+      '@swagger-api/apidom-parser-adapter-arazzo-yaml-1': 1.14.0
+      '@swagger-api/apidom-parser-adapter-asyncapi-json-2': 1.14.0
+      '@swagger-api/apidom-parser-adapter-asyncapi-json-3': 1.14.0
+      '@swagger-api/apidom-parser-adapter-asyncapi-yaml-2': 1.14.0
+      '@swagger-api/apidom-parser-adapter-asyncapi-yaml-3': 1.14.0
+      '@swagger-api/apidom-parser-adapter-json': 1.14.0
+      '@swagger-api/apidom-parser-adapter-json-schema-json-2020-12': 1.14.0
+      '@swagger-api/apidom-parser-adapter-json-schema-yaml-2020-12': 1.14.0
+      '@swagger-api/apidom-parser-adapter-openapi-json-2': 1.14.0
+      '@swagger-api/apidom-parser-adapter-openapi-json-3-0': 1.14.0
+      '@swagger-api/apidom-parser-adapter-openapi-json-3-1': 1.14.0
+      '@swagger-api/apidom-parser-adapter-openapi-json-3-2': 1.14.0
+      '@swagger-api/apidom-parser-adapter-openapi-yaml-2': 1.14.0
+      '@swagger-api/apidom-parser-adapter-openapi-yaml-3-0': 1.14.0
+      '@swagger-api/apidom-parser-adapter-openapi-yaml-3-1': 1.14.0
+      '@swagger-api/apidom-parser-adapter-openapi-yaml-3-2': 1.14.0
+      '@swagger-api/apidom-parser-adapter-yaml-1-2': 1.14.0
+    transitivePeerDependencies:
+      - debug
+      - supports-color
+
   swagger-ui@5.21.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1):
     dependencies:
       '@babel/runtime-corejs3': 7.29.2
@@ -20309,6 +21156,49 @@ snapshots:
       serialize-error: 8.1.0
       sha.js: 2.4.12
       swagger-client: 3.37.1(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+      url-parse: 1.5.10
+      xml: 1.0.1
+      xml-but-prettier: 1.0.1
+      zenscroll: 4.0.2
+    transitivePeerDependencies:
+      - '@types/react'
+      - debug
+      - supports-color
+
+  swagger-ui@5.34.1(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1):
+    dependencies:
+      '@babel/runtime-corejs3': 7.29.2
+      '@scarf/scarf': 1.4.0
+      '@tanstack/react-virtual': 3.14.10(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      base64-js: 1.5.1
+      buffer: 6.0.3
+      classnames: 2.5.1
+      css.escape: 1.5.1
+      deep-extend: 0.6.0
+      dompurify: 3.4.17
+      ieee754: 1.2.1
+      immutable: 4.3.9
+      js-file-download: 0.4.12
+      js-yaml: 4.3.2
+      lodash: 4.18.1
+      prop-types: 15.8.1
+      randexp: 0.5.3
+      randombytes: 2.1.0
+      react: 18.3.1
+      react-copy-to-clipboard: 5.1.1(react@18.3.1)
+      react-debounce-input: 3.3.0(react@18.3.1)
+      react-dom: 18.3.1(react@18.3.1)
+      react-immutable-proptypes: 2.2.0(immutable@4.3.9)
+      react-immutable-pure-component: 2.2.2(immutable@4.3.9)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react-inspector: 6.0.2(react@18.3.1)
+      react-redux: 9.3.1(react@18.3.1)(redux@5.0.1)
+      react-syntax-highlighter: 16.1.2(react@18.3.1)
+      redux: 5.0.1
+      remarkable: 2.0.1
+      reselect: 5.1.1
+      serialize-error: 8.1.0
+      sha.js: 2.4.12
+      swagger-client: 3.39.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
       url-parse: 1.5.10
       xml: 1.0.1
       xml-but-prettier: 1.0.1

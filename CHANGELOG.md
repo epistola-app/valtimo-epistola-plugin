@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Built and tested against Valtimo 13.55.1** (was 13.54.0), backend and frontend. Nothing in
+  13.55 touches what the plugin uses: no plugin-SDK, process-link, PBAC, task or form-flow change,
+  and the same Spring Boot, Angular, Carbon and Form.io versions. 13.55.0 needs OpenSearch 2.7 or
+  later and a one-time reindex where OpenSearch is enabled; that is Valtimo's migration, not the
+  plugin's. The supported range stays `>=13.21.0, <14`.
 - **CI builds the backend Javadoc.** Maven Central needs a javadoc jar, so a Javadoc error only
   surfaced at the release's last step: 1.0.2 reached npm and its images, and not Maven Central,
   over one unresolvable `{@link}`. That link is now plain code, and a Javadoc error fails the PR.
