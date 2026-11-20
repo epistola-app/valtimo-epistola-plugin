@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-11-21
+
 ### Changed
 
 - **Built and tested against Valtimo 13.55.1** (was 13.54.0), backend and frontend. Nothing in
