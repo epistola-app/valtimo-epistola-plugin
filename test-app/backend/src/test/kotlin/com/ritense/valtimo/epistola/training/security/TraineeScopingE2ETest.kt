@@ -38,6 +38,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.MvcResult
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
@@ -212,6 +213,13 @@ class TraineeScopingE2ETest {
             """{"processDefinitionId":"$sharedProcessDefinition","activityId":"generate-letter",""" +
                 """"activityType":"bpmn:UserTask:create","processLinkType":"form","formDefinitionId":"${UUID.randomUUID()}"}"""
         assertThat(status(postJson("/api/v1/process-link", processLink), alice)).isEqualTo(403)
+    }
+
+    @Test
+    fun `a trainee may open the Admin case screens, which read groups and a shared document definition`() {
+        assertThat(status(get("/api/management/v1/case-definition-group"), alice)).isEqualTo(200)
+        assertThat(status(get("/api/management/v1/document-definition/$SHARED_CASE"), alice)).isEqualTo(200)
+        assertThat(status(delete("/api/management/v1/document-definition/$SHARED_CASE"), alice)).isEqualTo(403)
     }
 
     @Test

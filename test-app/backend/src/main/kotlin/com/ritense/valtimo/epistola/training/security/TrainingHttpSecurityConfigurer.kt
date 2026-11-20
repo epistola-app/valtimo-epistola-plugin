@@ -238,6 +238,13 @@ class TrainingHttpSecurityConfigurer(
                 add(GET to "/api/management/v1/building-block/search")
                 add(GET to "/api/management/v1/building-block/{key}/version/**")
                 add(GET to "/api/management/v1/search-engine")
+
+                // Read-only lookups the Admin → Dossiers screens load on open: the case-definition
+                // groups on the overview, and a case type's document definition (its JSON schema)
+                // on its detail page. Without them every trainee who opened either got a 403 toast.
+                // Neither returns case data; changing a document definition stays ROLE_ADMIN-only.
+                add(GET to "/api/management/v1/case-definition-group")
+                add(GET to "/api/management/v1/document-definition/{name}")
             }
 
         /**

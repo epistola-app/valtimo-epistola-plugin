@@ -59,6 +59,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **No more 403 toasts for trainees on Admin → Dossiers.** The case-type overview reads the
+  case-definition groups, and a case type's page reads its document definition. Both were still
+  ROLE_ADMIN-only, so every trainee who opened them saw an error. Trainees may now read both
+  (`TrainingHttpSecurityConfigurer`); changing a document definition stays admin-only.
 - **"Herinnering sturen" no longer fails for a participant who signed up twice.** With the same
   e-mail address in the case's participant list more than once, the mapping found every match and
   sent the reminder template a list instead of one participant ("/deelnemer: array found, object
