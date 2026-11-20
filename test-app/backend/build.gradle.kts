@@ -40,6 +40,61 @@ plugins {
 // the build ("GRANULARITY is available only since 2.3.0"). Keep it on the Kotlin plugin's version.
 extra["kotlin.version"] = libs.versions.kotlin.get()
 
+// Security patch floors for the demo image. The same Boot BOM also wins over Valtimo's own BOM:
+// Valtimo 13.55.1 pins Tomcat 10.1.60 and commons-lang3 3.20.0, and the image shipped Boot 3.5.16's
+// 10.1.55 and 3.17.0. Each override stays on the line Boot 3.5 already uses (a patch, or a minor
+// where the line has no fixed patch), so this is a security floor, not an upgrade of the platform.
+// Revisit, and drop what Boot or Valtimo has caught up with, on every Valtimo bump.
+extra["tomcat.version"] = "10.1.62"
+extra["netty.version"] = "4.1.141.Final"
+extra["jackson-bom.version"] = "2.21.8"
+extra["log4j2.version"] = "2.25.5"
+extra["httpclient5.version"] = "5.6.5"
+extra["httpcore5.version"] = "5.4.4"
+extra["commons-lang3.version"] = "3.22.0"
+
+dependencyManagement {
+    dependencies {
+        dependency("com.google.guava:guava:33.8.0-jre")
+        dependency("org.json:json:20260814")
+        dependencySet("org.bouncycastle:1.87") {
+            entry("bcprov-jdk18on")
+            entry("bcpkix-jdk18on")
+            entry("bcutil-jdk18on")
+            entry("bcjmail-jdk18on")
+        }
+        // Valtimo's OpenSearch support (spring-data-opensearch 1.6.1) brings 2.18.0; the fix for
+        // CVE-2025-9624 is in 2.19.4. A minor of the same client line, moved together.
+        dependencySet("org.opensearch:2.19.7") {
+            listOf(
+                "opensearch",
+                "opensearch-cli",
+                "opensearch-common",
+                "opensearch-compress",
+                "opensearch-core",
+                "opensearch-geo",
+                "opensearch-secure-sm",
+                "opensearch-task-commons",
+                "opensearch-telemetry",
+                "opensearch-x-content",
+            ).forEach { entry(it) }
+        }
+        dependencySet("org.opensearch.client:2.19.7") {
+            entry("opensearch-rest-client")
+            entry("opensearch-rest-high-level-client")
+        }
+        dependencySet("org.opensearch.plugin:2.19.7") {
+            listOf(
+                "aggs-matrix-stats-client",
+                "lang-mustache-client",
+                "mapper-extras-client",
+                "parent-join-client",
+                "rank-eval-client",
+            ).forEach { entry(it) }
+        }
+    }
+}
+
 // ktlint embeds a Kotlin compiler of its own, and the same pin would move that one too: to 2.4,
 // whose compiler API ktlint 1.x cannot drive ("Extensions storage is not registered"). The pin
 // governs the application's dependencies, not a tool's, so ktlint gets the version it asks for.

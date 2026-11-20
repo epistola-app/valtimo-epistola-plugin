@@ -42,7 +42,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   field exists and is filled. The composer now also asks for optional fields, so a field added that
   way shows up without being marked required.
 
+### Security
+
+- **The demo images take the patched libraries, not Spring Boot's older pins.** The backend's
+  Spring dependency management let Boot 3.5.16's BOM override Valtimo's own: Valtimo asks for
+  Tomcat 10.1.60 and the image shipped 10.1.55, with its critical CVEs. The build now sets security
+  floors for Tomcat, Netty, Jackson, log4j, HttpClient 5, commons-lang3, Guava, BouncyCastle,
+  org.json and OpenSearch (2.18 to 2.19.7), each on the line it was already on. Both images also
+  apply their base OS's security updates at build time. What is left is recorded in
+  `.trivyignore`: Spring Framework 6.2's (fixed only in 7, so Valtimo 14), ognl inside mybatis 3.5,
+  a Jackson copy that Operaton's webjar carries as static content and never loads, and Angular 19's.
+- **Dev tooling off vulnerable minimatch and @babel/core.** minimatch has no 10.x fix, and 11
+  drops what glob 13 uses, so jest's glob moves to 14 with it.
+
 ### Changed
+
+- **Runs on Valtimo 13.55.1** (was 13.54.0). Its swagger-ui (5.34.1) no longer carries the
+  vulnerable DOMPurify. Where OpenSearch is enabled, 13.55 needs OpenSearch 2.7 or later and a
+  one-time "Rebuild / migrate index" on Admin > OpenSearch.
 
 - **The test app is built with Kotlin 2.4 and runs on the standard library it is compiled
   against.** Spring Boot's dependency management pinned every Kotlin artifact to Boot's own 1.9.25,

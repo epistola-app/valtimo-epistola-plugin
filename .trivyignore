@@ -4,7 +4,45 @@ CVE-2026-54266
 CVE-2026-54267
 CVE-2026-54268
 CVE-2026-54265
+CVE-2026-68945
+CVE-2026-69151
+CVE-2026-88057
+CVE-2026-88059
+CVE-2026-101896
+CVE-2026-111752
+CVE-2026-111753
 
 # uuid@9 has no patched 9.x release (fix requires 11.1.1+). Still pulled transitively
 # by Valtimo/swagger-ui stack; forcing a major risks runtime breaks in test-app only.
 CVE-2026-41907
+
+# Spring Framework 6.2 (demo backend image): fixed only in Spring 7.0.9. 6.2.19 is the last 6.2
+# release and Valtimo 13 is on Spring Boot 3.5 / Spring 6.2, so this needs Valtimo 14.
+CVE-2026-47884
+CVE-2026-47890
+CVE-2026-47892
+
+# ognl 3.4.4 shaded inside mybatis 3.5.19 (demo backend image, via the Operaton engine). 3.5.19 is
+# the last 3.5 release; the fix needs mybatis 3.6, which is Operaton's to adopt, not ours to force.
+CVE-2026-113730
+
+# jackson-core/-databind 2.20.2 inside operaton-webapp-webjar 1.0.3 (demo backend image). The jars
+# sit under the webjar's META-INF/resources/webjars/operaton/WEB-INF/lib: static content of a jar
+# that is itself in the war's WEB-INF/lib, on no class path, so never loaded. The application's
+# own Jackson is patched (test-app/backend/build.gradle.kts). Gone with Operaton 1.1's webjar.
+CVE-2026-18401
+CVE-2026-19032
+CVE-2026-54512
+CVE-2026-54513
+CVE-2026-54514
+CVE-2026-54515
+CVE-2026-59888
+CVE-2026-59889
+CVE-2026-68494
+CVE-2026-68497
+CVE-2026-77310
+CVE-2026-83557
+CVE-2026-89407
+CVE-2026-89425
+CVE-2026-91776
+CVE-2026-91777
