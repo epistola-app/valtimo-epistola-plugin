@@ -28,7 +28,7 @@ pnpm = "11.28.11"
 helm = "3.22.1"
 oxlint = "1.92.0"
 oxfmt = "0.77.0"
-"pipx:reuse" = { version = "6.2.0", extras = "charset-normalizer" }
+"pipx:reuse" = { version = "6.3.0", extras = "charset-normalizer" }
 
 # terraform = '1.0.0'       # specify a single version
 # erlang = '26'             # specify a major version only
