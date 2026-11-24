@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.ritense.authorization.AuthorizationContext.Companion.runWithoutAuthorization
 import com.ritense.document.domain.impl.JsonSchemaDocument
 import com.ritense.document.domain.impl.JsonSchemaDocumentDefinitionId
+import com.ritense.document.domain.impl.request.NewDocumentRequest
 import com.ritense.document.service.DocumentService
 import com.ritense.valtimo.Application
 import com.ritense.valtimo.contract.buildingblock.BuildingBlockDefinitionId
@@ -85,6 +86,12 @@ class ComposerSubmissionTransactionE2ETest {
     @Autowired
     lateinit var repositoryService: RepositoryService
 
+    @Autowired
+    lateinit var documentService: DocumentService
+
+    @Autowired
+    lateinit var writeBackService: ComposerWriteBackService
+
     @AfterEach
     fun clearUser() = SecurityContextHolder.clearContext()
 
@@ -118,6 +125,53 @@ class ComposerSubmissionTransactionE2ETest {
         val composers = TransactionTemplate(transactionManager).execute { resolver.forCaseDefinition(CORRESPONDENTIE) }
 
         assertThat(composers).extracting<String> { it.componentKey() }.contains("pv:epistolaLetter")
+    }
+
+    @Test
+    fun `on a real case document the case-wide fallback still writes back`() {
+        // The fallback now trusts the case definition a stored document carries. If a persisted
+        // case document came back without one, every case would silently lose its case-wide
+        // write-back — so this uses the real document service, end to end, and checks the value
+        // reached the case. kies-brief-flow's composer writes pv:epistolaFlowLetter's decision
+        // type to doc:/besluit/type, and no composer is in scope here.
+        actAs(ADMIN)
+        val created =
+            runWithoutAuthorization {
+                documentService
+                    .createDocument(NewDocumentRequest("correspondentie", "correspondentie", "1.0.0", objectMapper.readTree(CASE_CONTENT)))
+                    .resultingDocument()
+                    .orElseThrow()
+            }
+        val stored = runWithoutAuthorization { documentService.findBy(created.id()) }.orElseThrow()
+        assertThat(stored.definitionId().caseDefinitionId()).isEqualTo(CORRESPONDENTIE)
+
+        val letter =
+            mapOf(
+                "schemaVersion" to 1,
+                "catalogId" to "municipality-demo",
+                "templateId" to "besluit-bezwaar",
+                "data" to emptyMap<String, Any>(),
+                "inputs" to mapOf("decisionType" to "gegrond", "motivation" to "De dakkapel past."),
+            )
+        TransactionTemplate(transactionManager).executeWithoutResult {
+            writeBackService.applyFromSubmission(created.id().id, mapOf("epistolaFlowLetter" to letter), emptyList())
+        }
+
+        val after = runWithoutAuthorization { documentService.findBy(created.id()) }.orElseThrow()
+        assertThat(
+            after
+                .content()
+                .asJson()
+                .at("/besluit/type")
+                .asText(),
+        ).isEqualTo("gegrond")
+        assertThat(
+            after
+                .content()
+                .asJson()
+                .at("/besluit/toelichting")
+                .asText(),
+        ).isEqualTo("De dakkapel past.")
     }
 
     private fun completeTaskInTransaction(listener: ComposerSubmissionListener) {
@@ -180,6 +234,12 @@ class ComposerSubmissionTransactionE2ETest {
     companion object {
         private val DOCUMENT_ID: UUID = UUID.randomUUID()
         private const val BUILDING_BLOCK = "aanvraag-beoordelen"
+        private val CASE_CONTENT =
+            """
+            {"objector":{"firstName":"Jan","lastName":"Jansen","address":{"street":"Dorpsstraat","houseNumber":"12","postalCode":"6131AA","city":"Sittard"}},
+             "originalDecision":{"reference":"OMG-2026-0042","date":"2026-01-15T00:00:00Z","subject":"Omgevingsvergunning dakkapel"},
+             "objection":{"grounds":"De dakkapel past in het straatbeeld.","receivedDate":"2026-02-01T00:00:00Z"}}
+            """.trimIndent()
         private val CORRESPONDENTIE = CaseDefinitionId("correspondentie", "1.0.0")
         private val CASE_WORKER = arrayOf("ROLE_USER")
         private val ADMIN = arrayOf("ROLE_ADMIN", "ROLE_USER")
