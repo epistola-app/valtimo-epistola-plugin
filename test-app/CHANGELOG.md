@@ -11,6 +11,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **A test that a task submission survives the letter composer** (`ComposerSubmissionTransactionE2ETest`,
+  [#246](https://github.com/epistola-app/valtimo-epistola-plugin/issues/246)). It completes a task
+  inside Valtimo's real transaction, once on a building block's document and once as a case worker
+  who may not view the case type, and checks the submission commits. Both failed with
+  `UnexpectedRollbackException` before the plugin's fix.
 - **A letter about an event, sent ad hoc from the case.** The case type `evenement` gets
   a process "Losse brief" with the letter composer on its start form, offering two letters from
   the bundled catalog `gzac-uitnodiging` (now 1.3.0): badges with a QR code for every participant,
