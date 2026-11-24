@@ -327,8 +327,37 @@ public class ComposerConfigurationResolver {
      * configuration applies. The alternative — believing a submitted activity id — would let a
      * request point at another activity's composer.
      *
-     * @param caseDefinitionKey the case definition the document belongs to
+     * <p><b>No lookup, so nothing here can fail a submission.</b> The id is the one the case
+     * document carries ({@code document.definitionId().caseDefinitionId()}), which is also the
+     * version Valtimo starts the case's processes from — so these are the forms the case's tasks
+     * actually run on, not the active version's. Resolving the key to the <i>active</i> definition
+     * instead (as {@link #forCaseDefinition(String)} does) cannot be made safe on the submission
+     * path: Valtimo's {@code getActiveCaseDefinition} is {@code @Transactional} and throws for a key
+     * that is not a case type (a building block's) or that the user may not view, and the throw
+     * marks the submission's transaction rollback-only even when it is caught (#246).
+     *
+     * @param caseDefinitionId the case definition the document belongs to; {@code null} — what a
+     *                         building block's document carries — means there are none
      */
+    public List<LetterComposerConfiguration> forCaseDefinition(CaseDefinitionId caseDefinitionId) {
+        if (caseDefinitionId == null) {
+            return List.of();
+        }
+        return composersOn(caseDefinitionId, caseDefinitionId.getKey());
+    }
+
+    /**
+     * Every composer on every form of the <i>active</i> version of a case definition.
+     *
+     * @param caseDefinitionKey the case definition's key
+     * @deprecated Resolving a key to the active definition goes through Valtimo's
+     * {@code getActiveCaseDefinition}, whose failure — an unknown key, or one the user may not
+     * view — marks the caller's transaction rollback-only even though it is caught here, so calling
+     * this inside a submission fails it (#246). It also reads the active version, which may not be
+     * the one a case runs on. Use {@link #forCaseDefinition(CaseDefinitionId)} with the id the case
+     * document carries. Kept for installations that call or override it.
+     */
+    @Deprecated(since = "1.0.4", forRemoval = true)
     public List<LetterComposerConfiguration> forCaseDefinition(String caseDefinitionKey) {
         CaseDefinitionId caseDefinitionId;
         try {
@@ -341,7 +370,11 @@ public class ComposerConfigurationResolver {
         if (caseDefinitionId == null) {
             return List.of();
         }
+        return composersOn(caseDefinitionId, caseDefinitionKey);
+    }
 
+    private List<LetterComposerConfiguration> composersOn(
+            CaseDefinitionId caseDefinitionId, String caseDefinitionKey) {
         List<LetterComposerConfiguration> configurations = new ArrayList<>();
         for (FormIoFormDefinition form : formDefinitionRepository
                 .findAllByCaseDefinitionIdOrderByNameAsc(caseDefinitionId)) {

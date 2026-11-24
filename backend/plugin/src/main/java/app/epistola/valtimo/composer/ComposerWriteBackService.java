@@ -24,6 +24,7 @@ import app.epistola.valtimo.richtext.RichTextValues;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ritense.document.domain.impl.JsonSchemaDocumentId;
 import com.ritense.document.service.DocumentService;
+import com.ritense.valtimo.contract.case_.CaseDefinitionId;
 import com.ritense.valueresolver.ValueResolverService;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -133,8 +134,8 @@ public class ComposerWriteBackService {
             return;
         }
         try {
-            String caseDefinitionKey = caseDefinitionKeyOf(documentId);
-            if (caseDefinitionKey == null) {
+            CaseOwner owner = ownerOf(documentId);
+            if (owner == null) {
                 return;
             }
             // By variable, not by composer: two composers on a case type may write the same one —
@@ -145,7 +146,7 @@ public class ComposerWriteBackService {
             Set<String> letterVariables = new LinkedHashSet<>();
             List<LetterComposerConfiguration> candidates = submitted != null && !submitted.isEmpty()
                     ? submitted
-                    : configurationResolver.forCaseDefinition(caseDefinitionKey);
+                    : configurationResolver.forCaseDefinition(owner.caseDefinitionId());
             for (LetterComposerConfiguration composer : candidates) {
                 String variableName = letterVariableOf(composer);
                 if (variableName != null) {
@@ -446,10 +447,12 @@ public class ComposerWriteBackService {
             String letterVariable,
             List<LetterComposerConfiguration> submitted
     ) {
-        String caseDefinitionKey = caseDefinitionKeyOf(documentId);
-        if (caseDefinitionKey == null) {
+        CaseOwner owner = ownerOf(documentId);
+        if (owner == null) {
             return Map.of();
         }
+        // Named for the log lines below: the case type, or the building block for its documents.
+        String caseDefinitionKey = owner.name();
 
         // The composers on the form that was just submitted, when the caller could identify it.
         // Scoping to them is what makes two forms sharing one letter key work: each applies its own
@@ -460,7 +463,7 @@ public class ComposerWriteBackService {
         boolean scoped = submitted != null && !submitted.isEmpty();
         List<LetterComposerConfiguration> composers = scoped
                 ? submitted
-                : configurationResolver.forCaseDefinition(caseDefinitionKey);
+                : configurationResolver.forCaseDefinition(owner.caseDefinitionId());
         if (letterVariable != null && !letterVariable.isBlank()) {
             List<LetterComposerConfiguration> claiming = composers.stream()
                     .filter(c -> writes(c, letterVariable))
@@ -598,10 +601,35 @@ public class ComposerWriteBackService {
         return key != null && (key.equals(letterVariable) || key.equals("pv:" + letterVariable));
     }
 
-    private String caseDefinitionKeyOf(UUID documentId) {
+    /**
+     * What a document belongs to: the definition it is named after and, when that is a case type,
+     * the exact case definition — key and version — it was created under.
+     *
+     * @param name             the document definition's name: the case type's key, or a building
+     *                         block's key for a building block's own document
+     * @param caseDefinitionId the case definition the document carries, or {@code null} when it
+     *                         belongs to no case type — a building block runs under a document of
+     *                         its own, and that document carries none
+     */
+    private record CaseOwner(String name, CaseDefinitionId caseDefinitionId) {
+    }
+
+    /**
+     * What the document belongs to, or {@code null} when there is no such document.
+     *
+     * <p>Read from the document rather than by looking its key up as a case type. The lookup —
+     * Valtimo's {@code getActiveCaseDefinition} — is {@code @Transactional} and throws for a key that
+     * is not a case type, and this runs inside the submission's transaction: a caught throw still
+     * marks it rollback-only, which failed every building-block task with a composer-free form
+     * (#246).
+     */
+    private CaseOwner ownerOf(UUID documentId) {
         try {
             var document = documentService.findBy(JsonSchemaDocumentId.existingId(documentId));
-            return document.map(found -> found.definitionId().name()).orElse(null);
+            return document
+                    .map(found -> new CaseOwner(
+                            found.definitionId().name(), found.definitionId().caseDefinitionId()))
+                    .orElse(null);
         } catch (RuntimeException e) {
             // Raised rather than swallowed: a case that cannot be read is not the same as a case
             // with no composers, and treating them alike meant an infrastructure failure skipped

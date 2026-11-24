@@ -37,6 +37,8 @@ import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
 import com.ritense.document.domain.impl.JsonSchemaDocument;
 import com.ritense.document.domain.impl.JsonSchemaDocumentDefinitionId;
 import com.ritense.document.service.DocumentService;
+import com.ritense.valtimo.contract.buildingblock.BuildingBlockDefinitionId;
+import com.ritense.valtimo.contract.case_.CaseDefinitionId;
 import com.ritense.valueresolver.ValueResolverService;
 import java.util.List;
 import java.util.Map;
@@ -60,6 +62,7 @@ class ComposerWriteBackServiceTest {
 
     private static final UUID DOCUMENT_ID = UUID.randomUUID();
     private static final String CASE_KEY = "correspondentie";
+    private static final CaseDefinitionId CASE_ID = new CaseDefinitionId(CASE_KEY, "1.0.0");
 
     private final ComposerConfigurationResolver resolver = mock(ComposerConfigurationResolver.class);
     private final DocumentService documentService = mock(DocumentService.class);
@@ -79,6 +82,7 @@ class ComposerWriteBackServiceTest {
 
         var definitionId = mock(JsonSchemaDocumentDefinitionId.class);
         when(definitionId.name()).thenReturn(CASE_KEY);
+        when(definitionId.caseDefinitionId()).thenReturn(CASE_ID);
         var document = mock(JsonSchemaDocument.class);
         when(document.definitionId()).thenReturn(definitionId);
         // doReturn: findBy is declared with a wildcard, which thenReturn cannot satisfy.
@@ -86,7 +90,7 @@ class ComposerWriteBackServiceTest {
     }
 
     private void declaring(Map<String, String> writeBack) {
-        when(resolver.forCaseDefinition(CASE_KEY)).thenReturn(List.of(new LetterComposerConfiguration(
+        when(resolver.forCaseDefinition(CASE_ID)).thenReturn(List.of(new LetterComposerConfiguration(
                 "pv:epistolaLetter", null, UUID.randomUUID(), "gemeente", null,
                 List.of(new LetterComposerConfiguration.OfferedTemplate("gemeente", "besluit", "Besluit", null)),
                 false,
@@ -117,7 +121,7 @@ class ComposerWriteBackServiceTest {
         // configuration there is no way to know whether this letter had values to save, so
         // carrying on would be a guess. (It swallowed this until write-back moved to submission
         // time, where the letter was already irreversible and a retry would have sent a second.)
-        when(resolver.forCaseDefinition(CASE_KEY)).thenThrow(new RuntimeException("database is gone"));
+        when(resolver.forCaseDefinition(CASE_ID)).thenThrow(new RuntimeException("database is gone"));
 
         assertThatThrownBy(() -> service.applyFromSubmission(
                 DOCUMENT_ID, Map.of("epistolaLetter", letter(Map.of(), Map.of("decisionType", "gegrond"))), List.of()))
@@ -135,7 +139,7 @@ class ComposerWriteBackServiceTest {
         // against another, and `$letter.x` is not nothing just because it came from the wrong
         // letter. The letter arrives on a named process variable, and a composer declares the key
         // it writes to, so there is no need to guess.
-        when(resolver.forCaseDefinition(CASE_KEY)).thenReturn(List.of(
+        when(resolver.forCaseDefinition(CASE_ID)).thenReturn(List.of(
                 composerWriting("pv:epistolaLetter", Map.of("pv:uitBrief", "$inputs.decisionType")),
                 composerWriting("pv:andereBrief", Map.of("pv:uitAndereBrief", "$inputs.decisionType"))));
 
@@ -152,7 +156,7 @@ class ComposerWriteBackServiceTest {
     void writesNothingWhenNoComposerClaimsTheVariable() {
         // Writing from a composer that did not produce this letter is worse than writing nothing,
         // so the mismatch is reported rather than papered over by falling back to every composer.
-        when(resolver.forCaseDefinition(CASE_KEY)).thenReturn(List.of(
+        when(resolver.forCaseDefinition(CASE_ID)).thenReturn(List.of(
                 composerWriting("pv:andereBrief", Map.of("pv:uitAndereBrief", "$inputs.decisionType"))));
 
         service.apply(DOCUMENT_ID, letter(Map.of(), Map.of("decisionType", "gegrond")), "epistolaLetter");
@@ -297,6 +301,71 @@ class ComposerWriteBackServiceTest {
      * The submission entry point: which of a task's variables held a letter is answered by the
      * configuration, not by inspecting values for a letter-ish shape.
      */
+    /**
+     * A building block runs under a document of its own, named after the building block and
+     * carrying no case definition. Looking that name up as a case type is what failed every such
+     * task (#246): Valtimo's lookup throws inside the submission's transaction, which marks it
+     * rollback-only even though the throw was caught.
+     */
+    @Nested
+    class OnABuildingBlocksDocument {
+
+        private static final String BUILDING_BLOCK_KEY = "aanvraag-beoordelen";
+
+        @BeforeEach
+        void aBuildingBlockDocument() {
+            // Valtimo's own factory, so the shape is the one a building block's document has.
+            var definitionId = JsonSchemaDocumentDefinitionId.forBuildingBlock(
+                    BUILDING_BLOCK_KEY, new BuildingBlockDefinitionId(BUILDING_BLOCK_KEY, "1.0.0"));
+            assertThat(definitionId.caseDefinitionId())
+                    .describedAs("a building block's document belongs to no case type")
+                    .isNull();
+            var document = mock(JsonSchemaDocument.class);
+            when(document.definitionId()).thenReturn(definitionId);
+            org.mockito.Mockito.doReturn(Optional.of(document)).when(documentService).findBy(any());
+        }
+
+        @Test
+        @DisplayName("a task whose form carries no composer completes, and nothing is looked up as a case type")
+        void composerFreeTaskCompletes() {
+            assertThatCode(() -> service.applyFromSubmission(DOCUMENT_ID,
+                    Map.of("VTM_callDepth", 1, "epistolaLetter", letter(Map.of(), Map.of("veld", "x"))),
+                    List.of()))
+                    .doesNotThrowAnyException();
+
+            verify(resolver, never()).forCaseDefinition(anyString());
+            verify(valueResolverService, never()).handleValues(any(UUID.class), any());
+        }
+
+        @Test
+        @DisplayName("a composer on the building block's own form still writes back")
+        void scopedComposerStillWritesBack() {
+            // The scoped path never needed a case type, and must not start needing one: "no case
+            // definition" is not "no document".
+            var onTheForm = composerWriting("pv:epistolaLetter", Map.of("doc:/beoordeling", "$inputs.oordeel"));
+
+            service.applyFromSubmission(DOCUMENT_ID,
+                    Map.of("epistolaLetter", letter(Map.of(), Map.of("oordeel", "akkoord"))),
+                    List.of(onTheForm));
+
+            assertThat(written()).containsEntry("doc:/beoordeling", "akkoord");
+            verify(resolver, never()).forCaseDefinition(anyString());
+        }
+    }
+
+    @Test
+    @DisplayName("the case-wide fallback uses the case definition the document carries, never the active one by key")
+    void fallbackUsesTheDocumentsOwnCaseDefinition() {
+        declaring(Map.of("doc:/stuk", "$inputs.veld"));
+
+        service.applyFromSubmission(DOCUMENT_ID,
+                Map.of("epistolaLetter", letter(Map.of(), Map.of("veld", "waarde"))), List.of());
+
+        assertThat(written()).containsEntry("doc:/stuk", "waarde");
+        verify(resolver, atLeastOnce()).forCaseDefinition(CASE_ID);
+        verify(resolver, never()).forCaseDefinition(anyString());
+    }
+
     @Nested
     class FromSubmission {
 
@@ -320,7 +389,7 @@ class ComposerWriteBackServiceTest {
             var rules = Map.of("doc:/besluit/type", "$inputs.decisionType");
             var offered = List.of(
                     new LetterComposerConfiguration.OfferedTemplate("gemeente", "besluit", "Besluit", null));
-            when(resolver.forCaseDefinition(CASE_KEY)).thenReturn(List.of(
+            when(resolver.forCaseDefinition(CASE_ID)).thenReturn(List.of(
                     new LetterComposerConfiguration("pv:epistolaLetter", null, UUID.randomUUID(),
                             "gemeente", null, offered, false, rules),
                     new LetterComposerConfiguration("pv:epistolaLetter", null, UUID.randomUUID(),
@@ -345,7 +414,7 @@ class ComposerWriteBackServiceTest {
                     "gemeente", null, offered, false, Map.of("doc:/besluit/type", "$inputs.decisionType"));
             var otherForm = new LetterComposerConfiguration("pv:epistolaLetter", null, UUID.randomUUID(),
                     "gemeente", null, offered, false, Map.of("doc:/besluit/toelichting", "$inputs.decisionType"));
-            when(resolver.forCaseDefinition(CASE_KEY)).thenReturn(List.of(submittedForm, otherForm));
+            when(resolver.forCaseDefinition(CASE_ID)).thenReturn(List.of(submittedForm, otherForm));
 
             service.applyFromSubmission(
                     DOCUMENT_ID,
@@ -369,7 +438,7 @@ class ComposerWriteBackServiceTest {
             // refused naming a destination the author never configured on the form they edited.
             var offered = List.of(
                     new LetterComposerConfiguration.OfferedTemplate("gemeente", "besluit", "Besluit", null));
-            when(resolver.forCaseDefinition(CASE_KEY)).thenReturn(List.of(
+            when(resolver.forCaseDefinition(CASE_ID)).thenReturn(List.of(
                     new LetterComposerConfiguration("pv:epistolaLetter", null, UUID.randomUUID(),
                             "gemeente", null, offered, false,
                             Map.of("doc:/besluit/type", "$inputs.decisionType")),
@@ -426,7 +495,7 @@ class ComposerWriteBackServiceTest {
         @DisplayName("a composer that names no pv: key has no variable to look for")
         void ignoresAComposerWithoutAProcessVariableKey() {
             // Its letter never reaches a process variable, so no submission can carry one.
-            when(resolver.forCaseDefinition(CASE_KEY)).thenReturn(List.of(new LetterComposerConfiguration(
+            when(resolver.forCaseDefinition(CASE_ID)).thenReturn(List.of(new LetterComposerConfiguration(
                     "brief", null, UUID.randomUUID(), "gemeente", null,
                     List.of(new LetterComposerConfiguration.OfferedTemplate("gemeente", "besluit", "Besluit", null)),
                     false,
@@ -496,7 +565,7 @@ class ComposerWriteBackServiceTest {
     @Test
     @DisplayName("no composer on the case type means nothing to apply")
     void noComposers() {
-        when(resolver.forCaseDefinition(CASE_KEY)).thenReturn(List.of());
+        when(resolver.forCaseDefinition(CASE_ID)).thenReturn(List.of());
 
         service.apply(DOCUMENT_ID, letter(Map.of("veld", "x"), Map.of()));
 
@@ -608,6 +677,6 @@ class ComposerWriteBackServiceTest {
         service.apply(DOCUMENT_ID, null);
 
         verify(valueResolverService, never()).handleValues(any(UUID.class), any());
-        verify(resolver, never()).forCaseDefinition(anyString());
+        verify(resolver, never()).forCaseDefinition(any(CaseDefinitionId.class));
     }
 }
