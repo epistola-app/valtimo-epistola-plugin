@@ -54,3 +54,27 @@ Valtimo. `EpistolaRefusalIncidentIntegrationTest` reproduces Valtimo's two wrapp
 both halves (the wrapper on the incident, the diagnosis in the stack trace). It imitates Valtimo
 rather than running it, so it will not notice the fix: once a Valtimo with it is the floor, drop the
 wrapping from the test's delegate and assert the diagnosis on the incident itself.
+
+## `CaseDefinitionChecker.existsCaseDefinition(String)` answers `true` for every key
+
+**Seen in** Valtimo 13.21.0 and 13.55.1 (checked in the `com.ritense.valtimo:case` jars,
+`CaseDefinitionCheckerImpl`).
+
+**What happens.** `existsCaseDefinition(caseDefinitionKey)` returns `true` whether or not an active
+case definition with that key exists. A key that is a building block's, or no definition's at all,
+is reported as an existing case type.
+
+**Why.** It compares the result of `CaseDefinitionRepository.findOne(Specification)` with `null`
+(`ifnull` in the bytecode, a Kotlin `!= null` in the source). `findOne` returns an `Optional`, which
+is never `null`, so the comparison is always true. `isPresent` was meant.
+
+**What it costs the plugin.** It is the contract-level way to ask "is this a case type?" without
+going through `ActiveCaseDefinitionService.getActiveCaseDefinition`, which throws for a key that is
+not one. A throw from that `@Transactional` method marks the caller's transaction rollback-only even
+when caught, which failed every building-block task submission while the letter composer was
+enabled (#246). The guard would have avoided the throw, and does not work; the plugin now reads the
+case definition from the document instead (`document.definitionId().caseDefinitionId()`).
+
+**What would fix it.** `findOne(...).isPresent` in `CaseDefinitionCheckerImpl.existsCaseDefinition(String)`.
+Separately, a non-throwing `findActiveCaseDefinition(key): CaseDefinition?` on
+`ActiveCaseDefinitionService` would give callers inside a transaction a lookup that cannot poison it.

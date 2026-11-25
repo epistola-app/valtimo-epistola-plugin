@@ -34,6 +34,7 @@ import org.operaton.bpm.engine.RepositoryService;
 import org.operaton.bpm.engine.repository.ProcessDefinition;
 import org.operaton.bpm.engine.repository.ProcessDefinitionQuery;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -655,6 +656,41 @@ class ComposerConfigurationResolverTest {
                     .thenReturn(Optional.of(form));
 
             assertThat(resolver.forActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID)).hasSize(1);
+        }
+    }
+
+    /**
+     * The case-wide read used when a submission cannot be tied to one form (#246).
+     *
+     * <p>It must not resolve anything: the caller is inside the submission's transaction, where a
+     * caught failure from Valtimo's {@code @Transactional} lookup still marks the transaction
+     * rollback-only.
+     */
+    @Nested
+    class ForTheCaseDefinitionTheDocumentCarries {
+
+        @Test
+        @DisplayName("reads the forms of exactly that case definition, without looking anything up")
+        void readsThatVersionsForms() throws Exception {
+            var olderVersion = new CaseDefinitionId(CASE_KEY, "1.0.0");
+            FormIoFormDefinition form = mock(FormIoFormDefinition.class);
+            when(form.getFormDefinition()).thenReturn(objectMapper.readTree(composerJson("")));
+            when(formDefinitionRepository.findAllByCaseDefinitionIdOrderByNameAsc(olderVersion))
+                    .thenReturn(List.of(form));
+
+            var composers = resolver.forCaseDefinition(olderVersion);
+
+            assertThat(composers).extracting(LetterComposerConfiguration::componentKey)
+                    .containsExactly("pv:epistolaLetter");
+            org.mockito.Mockito.verifyNoInteractions(activeCaseDefinitionService);
+        }
+
+        @Test
+        @DisplayName("a document that belongs to no case type — a building block's — has none")
+        void noCaseDefinitionMeansNone() {
+            assertThat(resolver.forCaseDefinition((CaseDefinitionId) null)).isEmpty();
+
+            org.mockito.Mockito.verifyNoInteractions(activeCaseDefinitionService, formDefinitionRepository);
         }
     }
 }

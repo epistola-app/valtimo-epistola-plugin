@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A building block's user task completes while the letter composer is enabled** ([#246](https://github.com/epistola-app/valtimo-epistola-plugin/issues/246)).
+  Submitting the form of a building-block task whose process has no composer returned a 500
+  (_"Transaction silently rolled back because it has been marked as rollback-only"_) and left the
+  task open. On completion the composer looked the task's document up as a case type, and a
+  building block's document is not one: Valtimo's lookup failed inside the submission's
+  transaction, which rolled it back even though the plugin caught the failure. The same failure
+  hit a user completing a task on a case type they may not view. The composer now takes the case
+  definition from the document itself, so nothing is looked up and nothing can fail there; a
+  building block's own document belongs to no case type, so its tasks have no case-wide composers.
+  A composer on a building block's own form still writes back as before.
+- **Write-back rules come from the version of the case type the case runs on.** When a task's
+  form carries no composer, the rules are read from every form of the case type. They used to be
+  read from the active version; they are now read from the version the case was created under,
+  which is the version Valtimo starts its processes from. A case on an older version therefore
+  follows that version's rules, not a newer one's.
+
+### Deprecated
+
+- `ComposerConfigurationResolver.forCaseDefinition(String)`, for installations that call or
+  override it: resolving a key to the active case definition inside a submission fails that
+  submission when the key is not a case type. Use `forCaseDefinition(CaseDefinitionId)` with the
+  id the case document carries.
+
 ## [1.0.3] - 2026-11-21
 
 ### Changed
