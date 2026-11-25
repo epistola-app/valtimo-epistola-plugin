@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-11-25
+
 ### Fixed
 
 - **A building block's user task completes while the letter composer is enabled** ([#246](https://github.com/epistola-app/valtimo-epistola-plugin/issues/246)).
