@@ -3,18 +3,18 @@
 valtimo = "13.55.1.RELEASE"
 epistola-client = "2.0.0"
 lombok = "1.18.48"
-jsonata = "0.9.10"
+jsonata = "0.9.11"
 # Rich text (ADR 0008): reading HTML and markdown. Plain dependencies, not shaded — see
 # backend/plugin/build.gradle.kts.
 jsoup = "1.24.1"
-commonmark = "0.32.0"
+commonmark = "0.33.0"
 # Catalog version ranges (npm SemVer range grammar, as contract 2.0 defines it). Not shaded.
-semver4j = "6.0.0"
+semver4j = "6.1.0"
 # Shaded into the plugin jar (relocated) — see backend/plugin/build.gradle.kts
 json-schema-validator = "2.0.8"
 testcontainers = "2.0.5"
 postgresql = "42.7.14"
-netty-resolver-dns-macos = "4.2.20.Final"
+netty-resolver-dns-macos = "4.2.21.Final"
 mockito-kotlin = "5.4.0"
 
 # Plugins
